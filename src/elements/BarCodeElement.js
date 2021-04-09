@@ -1,7 +1,4 @@
 import DocElement from './DocElement';
-import SetValueCmd from '../commands/SetValueCmd';
-import Style from '../data/Style';
-import * as utils from '../utils';
 
 /**
  * Barcode doc element. Currently only Code-128 is supported.
@@ -33,8 +30,8 @@ export default class BarCodeElement extends DocElement {
         this.updateStyle();
     }
 
-    setValue(field, value, elSelector, isShown) {
-        super.setValue(field, value, elSelector, isShown);
+    setValue(field, value) {
+        super.setValue(field, value);
         if (field === 'content' ||field === 'format' || field === 'displayValue' || field === 'height') {
             this.updateBarCode();
             this.updateDisplay();
@@ -42,11 +39,11 @@ export default class BarCodeElement extends DocElement {
     }
 
     /**
-     * Returns all data fields of this object. The fields are used when serializing the object.
+     * Returns all fields of this object that can be modified in the properties panel.
      * @returns {String[]}
      */
-    getFields() {
-        return ['id', 'containerId', 'x', 'y', 'height', 'content', 'format', 'displayValue',
+    getProperties() {
+        return ['x', 'y', 'height', 'content', 'format', 'displayValue',
             'printIf', 'removeEmptyElement',
             'spreadsheet_hide', 'spreadsheet_column', 'spreadsheet_colspan', 'spreadsheet_addEmptyRow'];
     }
@@ -69,18 +66,6 @@ export default class BarCodeElement extends DocElement {
      */
     getSizers() {
         return ['N', 'S'];
-    }
-
-    getXTagId() {
-        return 'rbro_bar_code_element_position_x';
-    }
-
-    getYTagId() {
-        return 'rbro_bar_code_element_position_y';
-    }
-
-    getHeightTagId() {
-        return 'rbro_bar_code_element_height';
     }
 
     createElement() {
@@ -141,7 +126,17 @@ export default class BarCodeElement extends DocElement {
      * @param {CommandGroupCmd} cmdGroup - possible SetValue commands will be added to this command group.
      */
     addCommandsForChangedParameterName(parameter, newParameterName, cmdGroup) {
-        this.addCommandForChangedParameterName(parameter, newParameterName, 'rbro_bar_code_element_content', 'content', cmdGroup);
-        this.addCommandForChangedParameterName(parameter, newParameterName, 'rbro_bar_code_element_print_if', 'printIf', cmdGroup);
+        this.addCommandForChangedParameterName(parameter, newParameterName, 'content', cmdGroup);
+        this.addCommandForChangedParameterName(parameter, newParameterName, 'printIf', cmdGroup);
+    }
+
+    /**
+     * Returns class name.
+     * This can be useful for introspection when the class names are mangled
+     * due to the webpack uglification process.
+     * @returns {string}
+     */
+    getClassName() {
+        return 'BarCodeElement';
     }
 }

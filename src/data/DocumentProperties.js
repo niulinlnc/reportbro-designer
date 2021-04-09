@@ -103,7 +103,7 @@ export default class DocumentProperties {
         return this[field];
     }
 
-    setValue(field, value, elSelector, isShown) {
+    setValue(field, value) {
         this[field] = value;
         if (field === 'marginLeft' || field === 'marginTop' || field === 'marginRight' || field === 'marginBottom') {
             this[field + 'Val'] = utils.convertInputToNumber(value);
@@ -143,6 +143,7 @@ export default class DocumentProperties {
                 docElement.setWidth(size.width);
             }
         }
+        this.rb.getDocument().pageSizeChanged();
     }
 
     updateHeader() {
@@ -260,6 +261,16 @@ export default class DocumentProperties {
             ret[field] = this.getValue(field);
         }
         return ret;
+    }
+
+    /**
+     * Returns class name.
+     * This can be useful for introspection when the class names are mangled
+     * due to the webpack uglification process.
+     * @returns {string}
+     */
+    getClassName() {
+        return 'DocumentProperties';
     }
 }
 

@@ -30,30 +30,29 @@ export default class ImageElement extends DocElement {
     setup(openPanelItem) {
         super.setup(openPanelItem);
         this.createElement();
-        if (this.image !== '') {
-            // setImage must be called after createElement so load event handler of image element is triggered
-            this.setImage(this.image);
-        }
+        // setImage must be called after createElement so load event handler of image element is triggered
+        this.setImage();
         this.updateDisplay();
         this.updateStyle();
         this.updateName();
     }
 
-    setValue(field, value, elSelector, isShown) {
-        super.setValue(field, value, elSelector, isShown);
+    setValue(field, value) {
+        super.setValue(field, value);
         if (field === 'source' || field === 'imageFilename') {
             this.updateName();
-        } else if (field === 'image') {
-            this.setImage(value);
+        }
+        if (field === 'source' || field === 'image') {
+            this.setImage();
         }
     }
 
     /**
-     * Returns all data fields of this object. The fields are used when serializing the object.
+     * Returns all fields of this object that can be modified in the properties panel.
      * @returns {String[]}
      */
-    getFields() {
-        return ['id', 'containerId', 'x', 'y', 'width', 'height', 'source', 'image', 'imageFilename',
+    getProperties() {
+        return ['x', 'y', 'width', 'height', 'source', 'image', 'imageFilename',
             'horizontalAlignment', 'verticalAlignment', 'backgroundColor',
             'printIf', 'removeEmptyElement', 'link',
             'spreadsheet_hide', 'spreadsheet_column', 'spreadsheet_addEmptyRow'];
@@ -100,22 +99,6 @@ export default class ImageElement extends DocElement {
         $(`#rbro_el_content${this.id}`).removeClass().addClass('rbroContentContainerHelper').addClass(alignClass).addClass(valignClass);
     }
 
-    getXTagId() {
-        return 'rbro_image_element_position_x';
-    }
-
-    getYTagId() {
-        return 'rbro_image_element_position_y';
-    }
-
-    getWidthTagId() {
-        return 'rbro_image_element_width';
-    }
-
-    getHeightTagId() {
-        return 'rbro_image_element_height';
-    }
-
     createElement() {
         this.el = $(`<div id="rbro_el${this.id}" class="rbroDocElement rbroImageElement"></div>`);
         this.elImg = $('<img src="">')
@@ -136,7 +119,6 @@ export default class ImageElement extends DocElement {
                 .append(this.elImg)
             );
         this.appendToContainer();
-        this.setImage(this.image);
         super.registerEventHandlers();
     }
 
@@ -145,11 +127,16 @@ export default class ImageElement extends DocElement {
         super.remove();
     }
 
-    setImage(imgBase64) {
+    setImage() {
         this.elImg.attr('src', '');
-        if (imgBase64 !== '') {
-            this.elImg.attr('src', imgBase64);
+        if (this.source.startsWith('https://') || this.source.startsWith('http://')) {
+            // image specified by url
+            this.elImg.attr('src', this.source);
+        } else if (this.image !== '') {
+            // image base64 encoded
+            this.elImg.attr('src', this.image);
         } else {
+            // no image preview
             this.imageWidth = 0;
             this.imageHeight = 0;
             this.imageRatio = 0;
@@ -177,7 +164,17 @@ export default class ImageElement extends DocElement {
      * @param {CommandGroupCmd} cmdGroup - possible SetValue commands will be added to this command group.
      */
     addCommandsForChangedParameterName(parameter, newParameterName, cmdGroup) {
-        this.addCommandForChangedParameterName(parameter, newParameterName, 'rbro_image_element_source', 'source', cmdGroup);
-        this.addCommandForChangedParameterName(parameter, newParameterName, 'rbro_image_element_print_if', 'printIf', cmdGroup);
+        this.addCommandForChangedParameterName(parameter, newParameterName, 'source', cmdGroup);
+        this.addCommandForChangedParameterName(parameter, newParameterName, 'printIf', cmdGroup);
+    }
+
+    /**
+     * Returns class name.
+     * This can be useful for introspection when the class names are mangled
+     * due to the webpack uglification process.
+     * @returns {string}
+     */
+    getClassName() {
+        return 'ImageElement';
     }
 }

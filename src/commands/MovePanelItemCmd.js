@@ -7,8 +7,9 @@ import Document from '../Document';
  * the corresponding doc element is moved to the new container as well.
  * @class
  */
-export default class MovePanelItemCmd {
+export default class MovePanelItemCmd extends Command {
     constructor(panelItem, moveToParentPanel, moveToPosition, rb) {
+        super();
         this.objId = panelItem.getId();
         this.moveToParentId = moveToParentPanel.getId();
         this.moveToPosition = moveToPosition;
@@ -51,5 +52,15 @@ export default class MovePanelItemCmd {
             obj.getPanelItem().openParentItems();
             this.rb.notifyEvent(obj, Command.operation.move);
         }
+    }
+
+    /**
+     * Returns class name.
+     * This can be useful for introspection when the class names are mangled
+     * due to the webpack uglification process.
+     * @returns {string}
+     */
+    getClassName() {
+        return 'MovePanelItemCmd';
     }
 }

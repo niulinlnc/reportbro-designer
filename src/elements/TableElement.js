@@ -50,7 +50,6 @@ export default class TableElement extends DocElement {
         this.contentDataRows = contentDataRows;
         this.footerData = this.createBand('footer', -1, null);
         this.setupComplete = true;
-        this.updateWidth();
         this.updateHeight();
         this.updateStyle();
         this.updateName();
@@ -125,8 +124,8 @@ export default class TableElement extends DocElement {
         return maxId;
     }
 
-    setValue(field, value, elSelector, isShown) {
-        super.setValue(field, value, elSelector, isShown);
+    setValue(field, value) {
+        super.setValue(field, value);
         if (field === 'dataSource') {
             this.updateName();
         } else if (field === 'header') {
@@ -216,7 +215,17 @@ export default class TableElement extends DocElement {
      * @returns {String[]}
      */
     getFields() {
-        return ['id', 'containerId', 'x', 'y', 'dataSource', 'columns', 'header', 'contentRows', 'footer',
+        let fields = this.getProperties();
+        fields.splice(0, 0, 'id', 'containerId', 'width');
+        return fields;
+    }
+
+    /**
+     * Returns all fields of this object that can be modified in the properties panel.
+     * @returns {String[]}
+     */
+    getProperties() {
+        return ['x', 'y', 'dataSource', 'columns', 'header', 'contentRows', 'footer',
             'border', 'borderColor', 'borderWidth',
             'printIf', 'removeEmptyElement',
             'spreadsheet_hide', 'spreadsheet_column', 'spreadsheet_addEmptyRow'];
@@ -229,8 +238,9 @@ export default class TableElement extends DocElement {
     select() {
         super.select();
         let elSizerContainer = this.getSizerContainerElement();
+        // create sizers (to indicate selection) which do not support resizing
         for (let sizer of ['NE', 'SE', 'SW', 'NW']) {
-            elSizerContainer.append($(`<div class="rbroSizer rbroSizer${sizer} rbroSizerInactive"></div>`));
+            elSizerContainer.append($(`<div class="rbroSizer rbroSizer${sizer} rbroSizerMove"></div>`));
         }
     }
 
@@ -240,22 +250,6 @@ export default class TableElement extends DocElement {
      */
     getSizers() {
         return [];
-    }
-
-    getXTagId() {
-        return 'rbro_table_element_position_x';
-    }
-
-    getYTagId() {
-        return 'rbro_table_element_position_y';
-    }
-
-    getWidthTagId() {
-        return 'rbro_table_element_width';
-    }
-
-    getHeightTagId() {
-        return 'rbro_table_element_height';
     }
 
     isDroppingAllowed() {
@@ -275,6 +269,7 @@ export default class TableElement extends DocElement {
             </div>`);
         this.appendToContainer();
         this.registerEventHandlers();
+        $(`#rbro_el_table${this.id}`).css('width', (this.widthVal + 1) + 'px');
     }
 
     remove() {
@@ -293,33 +288,31 @@ export default class TableElement extends DocElement {
     }
 
     /**
-     * Is called when column width of a single column was changed to update the column width of all table bands.
+     * Is called when number of columns was changed to update the column width of all table bands.
      * @param {Number} columnIndex - index of changed column.
      * @param {Number} width - new column width.
-     * @param {Boolean} updateTableWidth - if true the table width will be updated as well.
      */
-    updateColumnWidth(columnIndex, width, updateTableWidth) {
+    updateColumnWidth(columnIndex, width) {
         if (this.setupComplete) {
             this.headerData.updateColumnWidth(columnIndex, width);
             for (let i=0; i < this.contentDataRows.length; i++) {
                 this.contentDataRows[i].updateColumnWidth(columnIndex, width);
             }
             this.footerData.updateColumnWidth(columnIndex, width);
-            if (updateTableWidth) {
-                this.updateWidth();
-            }
         }
     }
 
     /**
-     * Update table width based on width of all cells of content band.
+     * Update display of columns of all bands depending on column span value of preceding columns.
+     * e.g. if a column has column span value of 3 then the next two columns will be hidden.
      */
-    updateWidth() {
+    updateColumnDisplay() {
         if (this.setupComplete) {
-            let width = this.headerData.getWidth();
-            this.width = '' + width;
-            this.widthVal = width;
-            $(`#rbro_el_table${this.id}`).css('width', (this.widthVal + 1) + 'px');
+            this.headerData.updateColumnDisplay();
+            for (let i=0; i < this.contentDataRows.length; i++) {
+                this.contentDataRows[i].updateColumnDisplay();
+            }
+            this.footerData.updateColumnDisplay();
         }
     }
 
@@ -348,37 +341,26 @@ export default class TableElement extends DocElement {
      * @param {TableBandElement} tableBand - band containing the changed cell.
      * @param {Number} columnIndex - column index of changed cell.
      * @param {Number} newColumnWidth
+     * @param {Number} newTableWidth
      */
-    notifyColumnWidthResized(tableBand, columnIndex, newColumnWidth) {
+    notifyColumnWidthResized(tableBand, columnIndex, newColumnWidth, newTableWidth) {
         if (!this.setupComplete)
             return;
 
         if (tableBand !== this.headerData) {
-            let column = this.headerData.getColumn(columnIndex);
-            if (column !== null) {
-                column.updateDisplayInternalNotify(0, 0, newColumnWidth, column.getValue('heightVal'), false);
-            }
+            this.headerData.notifyColumnWidthResized(columnIndex, newColumnWidth);
         }
         for (let i=0; i < this.contentDataRows.length; i++) {
             if (tableBand !== this.contentDataRows[i]) {
-                let column = this.contentDataRows[i].getColumn(columnIndex);
-                if (column !== null) {
-                    column.updateDisplayInternalNotify(0, 0, newColumnWidth, column.getValue('heightVal'), false);
-                }
+                this.contentDataRows[i].notifyColumnWidthResized(columnIndex, newColumnWidth);
             }
         }
         if (tableBand !== this.footerData) {
-            let column = this.footerData.getColumn(columnIndex);
-            if (column !== null) {
-                column.updateDisplayInternalNotify(0, 0, newColumnWidth, column.getValue('heightVal'), false);
-            }
+            this.footerData.notifyColumnWidthResized(columnIndex, newColumnWidth);
         }
-        let width = this.headerData.getWidth();
-        let column = this.headerData.getColumn(columnIndex);
-        if (column !== null) {
-            width -= column.getValue('widthVal') - newColumnWidth;
-        }
-        $(`#rbro_el_table${this.id}`).css('width', (width + 1) + 'px');
+        this.width = '' + newTableWidth;
+        this.widthVal = newTableWidth;
+        $(`#rbro_el_table${this.id}`).css('width', (newTableWidth + 1) + 'px');
     }
 
     updateName() {
@@ -444,7 +426,7 @@ export default class TableElement extends DocElement {
      * @param {CommandGroupCmd} cmdGroup - possible SetValue commands will be added to this command group.
      */
     addCommandsForChangedParameterName(parameter, newParameterName, cmdGroup) {
-        this.addCommandForChangedParameterName(parameter, newParameterName, 'rbro_table_element_data_source', 'dataSource', cmdGroup);
+        this.addCommandForChangedParameterName(parameter, newParameterName, 'dataSource', cmdGroup);
     }
 
     /**
@@ -464,7 +446,7 @@ export default class TableElement extends DocElement {
             if (freeSpace > spaceNeeded) {
                 newWidth = column.getValue('widthVal') - spaceNeeded;
             }
-            this.updateColumnWidth(i, newWidth, false);
+            this.updateColumnWidth(i, newWidth);
             spaceNeeded -= freeSpace;
             if (spaceNeeded <= 0)
                 break;
@@ -473,19 +455,34 @@ export default class TableElement extends DocElement {
     }
 
     /**
-     * Adds commands to command group parameter to recreate table with new column count.
-     * @param {Number} columns - requested new column count.
-     * @param {CommandGroupCmd} cmdGroup - possible commands will be added to this command group.
-     * @returns {Number} either new column count or existing column count in case there is not enough space
-     * for all column.
+     * Returns true if there is enough space for the given column count, false otherwise.
+     * @param {Number} columns - column count to test for available space.
+     * @returns {Boolean}
      */
-    addCommandsForChangedColumns(columns, cmdGroup) {
+    hasEnoughAvailableSpace(columns) {
         let existingColumns = utils.convertInputToNumber(this.columns);
         let maxColumns = Math.floor(this.widthVal / TableElement.getColumnMinWidth());
         if (columns > existingColumns && columns > maxColumns) {
             // not enough space for all columns
-            return existingColumns;
+            return false;
         }
+        return true;
+    }
+    /**
+     * Adds commands to command group parameter to recreate table with new column count.
+     *
+     * The commands are only added if there is enough space available for the new columns.
+     * This should be checked beforehand by calling hasEnoughAvailableSpace.
+     *
+     * @param {Number} columns - requested new column count.
+     * @param {CommandGroupCmd} cmdGroup - possible commands will be added to this command group.
+     */
+    addCommandsForChangedColumns(columns, cmdGroup) {
+        if (!this.hasEnoughAvailableSpace(columns)) {
+            return;
+        }
+
+        let existingColumns = utils.convertInputToNumber(this.columns);
 
         // delete table with current settings and restore below with new columns, necessary for undo/redo
         let cmd = new AddDeleteDocElementCmd(false, this.getPanelItem().getPanelName(),
@@ -502,7 +499,7 @@ export default class TableElement extends DocElement {
             // add remaining space to last column
             let column = this.headerData.getColumn(columns - 1);
             if (this.widthVal - usedWidth > 0) {
-                this.updateColumnWidth(columns - 1, column.getValue('widthVal') + (this.widthVal - usedWidth), false);
+                this.updateColumnWidth(columns - 1, column.getValue('widthVal') + (this.widthVal - usedWidth));
             }
         }
 
@@ -517,8 +514,6 @@ export default class TableElement extends DocElement {
         cmd = new AddDeleteDocElementCmd(true, this.getPanelItem().getPanelName(),
             this.toJS(), this.id, this.getContainerId(), -1, this.rb);
         cmdGroup.addCommand(cmd);
-        
-        return columns;
     }
 
     /**
@@ -531,7 +526,8 @@ export default class TableElement extends DocElement {
             return;
         }
         // delete table with current settings and restore below with new columns, necessary for undo/redo
-        let cmd = new AddDeleteDocElementCmd(false, this.getPanelItem().getPanelName(),
+        let cmd = new AddDeleteDocElementCmd(
+            false, this.getPanelItem().getPanelName(),
             this.toJS(), this.id, this.getContainerId(), -1, this.rb);
         cmdGroup.addCommand(cmd);
 
@@ -557,7 +553,8 @@ export default class TableElement extends DocElement {
 
         this.contentRows = '' + contentRows;
         // restore table with new content rows and updated settings
-        cmd = new AddDeleteDocElementCmd(true, this.getPanelItem().getPanelName(),
+        cmd = new AddDeleteDocElementCmd(
+            true, this.getPanelItem().getPanelName(),
             this.toJS(), this.id, this.getContainerId(), -1, this.rb);
         cmdGroup.addCommand(cmd);
     }
@@ -593,6 +590,16 @@ export default class TableElement extends DocElement {
 
     static getColumnMinWidth() {
         return 20;
+    }
+
+    /**
+     * Returns class name.
+     * This can be useful for introspection when the class names are mangled
+     * due to the webpack uglification process.
+     * @returns {string}
+     */
+    getClassName() {
+        return 'TableElement';
     }
 }
 

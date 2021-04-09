@@ -1,4 +1,5 @@
 import AddDeleteStyleCmd from "../commands/AddDeleteStyleCmd";
+import Command from "../commands/Command";
 import SetValueCmd from "../commands/SetValueCmd";
 import DocElement from "../elements/DocElement";
 import * as utils from "../utils";
@@ -14,7 +15,7 @@ export default class Style {
         this.name = rb.getLabel('style');
         this.panelItem = null;
         this.errors = [];
-        
+
         this.bold = false;
         this.italic = false;
         this.underline = false;
@@ -23,7 +24,7 @@ export default class Style {
         this.verticalAlignment = Style.alignment.top;
         this.textColor = '#000000';
         this.backgroundColor = '';
-        this.font = Style.font.courier;
+        this.font = rb.getProperty('defaultFont');
         this.fontSize = 12;
         this.lineSpacing = 1;
         this.borderColor = '#000000';
@@ -84,15 +85,55 @@ export default class Style {
         return this[field];
     }
 
-    setValue(field, value, elSelector, isShown) {
+    setValue(field, value) {
         this[field] = value;
+
         if (field.indexOf('border') !== -1) {
-            Style.setBorderValue(this, field, '', value, elSelector, isShown);
+            if (field === 'borderWidth') {
+                this.borderWidthVal = utils.convertInputToNumber(value);
+            }
+            Style.setBorderValue(this, field, '', value, this.rb);
+        }
+
+        if (field !== 'name') {
+            for (let docElement of this.rb.getDocElements(true)) {
+                docElement.updateChangedStyle(this.getId());
+            }
         }
     }
 
-    setBorderAll(fieldPrefix, value) {
-        this[fieldPrefix + 'borderAll'] = value;
+    /**
+     * Adds commands to command group parameter to set changed property value
+     * for all document elements using this style.
+     *
+     * This should be called when a property of this style was changed so the property
+     * will be updated for all document elements as well.
+     *
+     * @param {String} field - changed field of this style.
+     * @param {Object} value - new value for given field.
+     * @param {String} type - property type for SetValueCmd.
+     * @param {CommandGroupCmd} cmdGroup - commands will be added to this command group.
+     */
+    addCommandsForChangedProperty(field, value, type, cmdGroup) {
+        let strId = '' + this.getId();
+        for (let docElement of this.rb.getDocElements(true)) {
+            if (docElement.hasProperty('styleId')) {
+                if (docElement.getValue('styleId') === strId &&
+                        docElement.getValue(field) !== value) {
+                    let cmd = new SetValueCmd(
+                        docElement.getId(), field, value, type, this.rb);
+                    cmd.disableSelect();
+                    cmdGroup.addCommand(cmd);
+                }
+                if (docElement.getValue('cs_styleId') === strId &&
+                        docElement.getValue('cs_' + field) !== value) {
+                    let cmd = new SetValueCmd(
+                        docElement.getId(), 'cs_' + field, value, type, this.rb);
+                    cmd.disableSelect();
+                    cmdGroup.addCommand(cmd);
+                }
+            }
+        }
     }
 
     /**
@@ -107,7 +148,7 @@ export default class Style {
                     element.getElementType() === DocElement.type.tableText) && element.getValue('styleId') &&
                     utils.convertInputToNumber(element.getValue('styleId')) === this.id) {
                 cmd = new SetValueCmd(
-                    element.getId(), 'rbro_text_element_style_id', 'styleId', '', SetValueCmd.type.text, this.rb);
+                    element.getId(), 'styleId', '', SetValueCmd.type.text, this.rb);
                 cmdGroup.addCommand(cmd);
             }
         }
@@ -153,34 +194,33 @@ export default class Style {
      * @param {String} fieldPrefix - prefix of field to reuse style settings for different
      * sections (e.g. for conditional style).
      * @param {Boolean} value - new value for specified field.
-     * @param {String} elSelector - jquery selector to specify the DOM element.
-     * @param {Boolean} isShown - true if the specified object is currently visible in the GUI.
+     * @param {ReportBro} rb - ReportBro instance.
      */
-    static setBorderValue(obj, field, fieldPrefix, value, elSelector, isShown) {
-        if (field === `${fieldPrefix}borderAll`) {
-            obj.borderLeft = obj.borderTop = obj.borderRight = obj.borderBottom = value;
-            if (isShown) {
-                if (value) {
-                    $(elSelector).parent().find('button').addClass('rbroButtonActive');
-                } else {
-                    $(elSelector).parent().find('button').removeClass('rbroButtonActive');
-                }
-            }
-        } else if (field === `${fieldPrefix}borderLeft` || field === `${fieldPrefix}borderTop` ||
-                field === `${fieldPrefix}borderRight` || field === `${fieldPrefix}borderBottom`) {
-            if (obj.getValue(`${fieldPrefix}borderLeft`) && obj.getValue(`${fieldPrefix}borderTop`) &&
-                    obj.getValue(`${fieldPrefix}borderRight`) && obj.getValue(`${fieldPrefix}borderBottom`)) {
-                obj.setBorderAll(fieldPrefix, true);
-                if (isShown) {
-                    $(elSelector).parent().find(`button[value="${fieldPrefix}borderAll"]`).addClass('rbroButtonActive');
-                }
-            } else {
-                obj.setBorderAll(fieldPrefix, false);
-                if (isShown) {
-                    $(elSelector).parent().find(`button[value="${fieldPrefix}borderAll"]`).removeClass('rbroButtonActive');
-                }
+    static setBorderValue(obj, field, fieldPrefix, value, rb) {
+        let fieldWithoutPrefix = field;
+        if (fieldPrefix.length > 0) {
+            fieldWithoutPrefix = fieldWithoutPrefix.substr(fieldPrefix.length);
+        }
+        if (fieldWithoutPrefix === 'borderLeft' || fieldWithoutPrefix === 'borderTop' ||
+                fieldWithoutPrefix === 'borderRight' || fieldWithoutPrefix === 'borderBottom') {
+            let borderAll = (obj.getValue(`${fieldPrefix}borderLeft`) && obj.getValue(`${fieldPrefix}borderTop`) &&
+                    obj.getValue(`${fieldPrefix}borderRight`) && obj.getValue(`${fieldPrefix}borderBottom`));
+            let borderAllField = `${fieldPrefix}borderAll`;
+            if (borderAll !== obj[borderAllField]) {
+                obj[borderAllField] = borderAll;
+                rb.notifyEvent(obj, Command.operation.change, borderAllField);
             }
         }
+    }
+
+    /**
+     * Returns class name.
+     * This can be useful for introspection when the class names are mangled
+     * due to the webpack uglification process.
+     * @returns {string}
+     */
+    getClassName() {
+        return 'Style';
     }
 }
 
@@ -189,7 +229,7 @@ export default class Style {
 Style.font = {
     courier: 'courier',
     helvetica: 'helvetica',
-    timesRoman: 'times_roman'
+    times: 'times'
 };
 
 Style.alignment = {

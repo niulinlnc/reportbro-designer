@@ -1,12 +1,5 @@
 String.prototype.reverse = function () { return this.split('').reverse().join(''); };
 
-export function setInputInteger(el) {
-    el.on('keyup', function() {
-        var nvalue = this.value.reverse().replace(/[^0-9\-]|\-(?=.)/g, '').reverse();
-        if (this.value !== nvalue) this.value = nvalue;
-    });
-}
-
 export function setInputPositiveInteger(el) {
     el.on('keyup', function() {
         var nvalue = this.value.replace(/[^0-9]/g, '');
@@ -85,11 +78,13 @@ export function roundValueToUpperInterval(val, interval) {
 
 export function replaceAll(str, oldVal, newVal) {
     // not the fastest solution but works
-    let ret = str;
-    while (ret.indexOf(oldVal) !== -1) {
-        ret = ret.replace(oldVal, newVal);
+    let rv = str;
+    if (oldVal !== newVal) {
+        while (rv.indexOf(oldVal) !== -1) {
+            rv = rv.replace(oldVal, newVal);
+        }
     }
-    return ret;
+    return rv;
 }
 
 export function initColorPicker(el, rb, options) {
@@ -124,11 +119,16 @@ export function initColorPicker(el, rb, options) {
     el.spectrum(allOptions);
     el.show();  // show original text input
     el.focus(event => {
-            el.parent().addClass('rbroActive');
-        });
+        el.parent().addClass('rbroActive');
+    });
     el.blur(event => {
-            el.parent().removeClass('rbroActive');
-        });
+        el.parent().removeClass('rbroActive');
+    });
+}
+
+export function isValidColor(color) {
+    // test for empty value (transparent) or # and 6 hex digits
+    return !color || /^#[0-9A-F]{6}$/i.test(color);
 }
 
 export function insertAtCaret(element, text) {
@@ -154,8 +154,20 @@ export function insertAtCaret(element, text) {
 
 export function getDataTransferType(transferType, prefix) {
     let parts = transferType.split('/');
-    if (parts.length >= 2 && parts[0] == prefix) {
+    if (parts.length >= 2 && parts[0] === prefix) {
         return parts[1];
+    }
+    return null;
+}
+
+export function getEventAbsPos(event) {
+    if (window.TouchEvent && event.originalEvent instanceof TouchEvent) {
+        if (event.touches.length > 0) {
+            let lastTouch = event.touches[event.touches.length - 1];
+            return { x: lastTouch.pageX, y: lastTouch.pageY };
+        }
+    } else {
+        return { x: event.originalEvent.pageX, y: event.originalEvent.pageY };
     }
     return null;
 }

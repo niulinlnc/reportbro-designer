@@ -97,33 +97,13 @@ export default class SectionElement extends DocElement {
     }
 
     /**
-     * Register event handler for mouse down so element can be dragged but and
-     * only allow selection if double clicked.
+     * Register event handler for a container element so it can be dragged and
+     * allow selection on double click.
      */
     registerEventHandlers() {
-        this.el
-            .dblclick(event => {
-                if (!this.rb.isSelectedObject(this.id)) {
-                    this.rb.selectObject(this.id, true);
-                    event.stopPropagation();
-                }
-            })
-            .mousedown(event => {
-                if (event.shiftKey) {
-                    this.rb.deselectObject(this.id);
-                } else {
-                    if (this.rb.isSelectedObject(this.id)) {
-                        this.rb.getDocument().startDrag(event.originalEvent.pageX, event.originalEvent.pageY,
-                            this.id, this.containerId, this.linkedContainerId,
-                            this.getElementType(), DocElement.dragType.element);
-                    } else {
-                        this.rb.deselectAll();
-                    }
-                }
-                event.stopPropagation();
-            });
+        super.registerContainerEventHandlers();
     }
-    
+
     /**
      * Returns highest id of this component, this is the max id of the footer band because it is created last.
      * @returns {Number}
@@ -148,9 +128,8 @@ export default class SectionElement extends DocElement {
         }
     }
 
-
-    setValue(field, value, elSelector, isShown) {
-        super.setValue(field, value, elSelector, isShown);
+    setValue(field, value) {
+        super.setValue(field, value);
 
         if (field === 'label' || field === 'dataSource') {
             this.updateName();
@@ -186,15 +165,24 @@ export default class SectionElement extends DocElement {
     }
 
     /**
-     * Returns all data fields of this object. The fields are used when serializing the object.
+     * Returns all fields of this object that can be modified in the properties panel.
      * @returns {String[]}
      */
-    getFields() {
-        return ['id', 'containerId', 'y', 'label', 'dataSource', 'header', 'footer', 'printIf'];
+    getProperties() {
+        return ['y', 'label', 'dataSource', 'header', 'footer', 'printIf'];
     }
 
     getElementType() {
         return DocElement.type.section;
+    }
+
+    select() {
+        super.select();
+        let elSizerContainer = this.getSizerContainerElement();
+        // create sizers (to indicate selection) which do not support resizing
+        for (let sizer of ['N', 'S']) {
+            elSizerContainer.append($(`<div class="rbroSizer rbroSizer${sizer} rbroSizerMove"></div>`));
+        }
     }
 
     /**
@@ -205,12 +193,8 @@ export default class SectionElement extends DocElement {
         return [];
     }
 
-    getYTagId() {
-        return 'rbro_section_element_position_y';
-    }
-
-    getHeightTagId() {
-        return '';
+    isAreaSelectionAllowed() {
+        return false;
     }
 
     isDroppingAllowed() {
@@ -324,16 +308,16 @@ export default class SectionElement extends DocElement {
             let y = 0;
             if (this.header) {
                 if (this.headerData !== ignoreBandData) {
-                    this.headerData.setValue('y', '' + y, null, true);
+                    this.headerData.setValue('y', '' + y);
                 }
                 y += this.headerData.getValue('heightVal');
             }
             if (this.contentData !== ignoreBandData) {
-                this.contentData.setValue('y', '' + y, null, true);
+                this.contentData.setValue('y', '' + y);
             }
             y += this.contentData.getValue('heightVal');
             if (this.footer && this.footerData !== ignoreBandData) {
-                this.footerData.setValue('y', '' + y, null, true);
+                this.footerData.setValue('y', '' + y);
             }
         }
         this.updateHeight(null, -1);
@@ -384,8 +368,8 @@ export default class SectionElement extends DocElement {
      * @param {CommandGroupCmd} cmdGroup - possible SetValue commands will be added to this command group.
      */
     addCommandsForChangedParameterName(parameter, newParameterName, cmdGroup) {
-        this.addCommandForChangedParameterName(parameter, newParameterName, 'rbro_section_element_data_source', 'dataSource', cmdGroup);
-        this.addCommandForChangedParameterName(parameter, newParameterName, 'rbro_section_element_print_if', 'printIf', cmdGroup);
+        this.addCommandForChangedParameterName(parameter, newParameterName, 'dataSource', cmdGroup);
+        this.addCommandForChangedParameterName(parameter, newParameterName, 'printIf', cmdGroup);
     }
 
     toJS() {
@@ -394,5 +378,15 @@ export default class SectionElement extends DocElement {
         ret['contentData'] = this.contentData.toJS();
         ret['footerData'] = this.footerData.toJS();
         return ret;
+    }
+
+    /**
+     * Returns class name.
+     * This can be useful for introspection when the class names are mangled
+     * due to the webpack uglification process.
+     * @returns {string}
+     */
+    getClassName() {
+        return 'SectionElement';
     }
 }

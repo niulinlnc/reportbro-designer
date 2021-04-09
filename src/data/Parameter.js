@@ -1,4 +1,6 @@
+import AddDeleteParameterCmd from '../commands/AddDeleteParameterCmd';
 import Command from '../commands/Command';
+import CommandGroupCmd from '../commands/CommandGroupCmd';
 import SetValueCmd from '../commands/SetValueCmd';
 import MainPanelItem from '../menu/MainPanelItem';
 import * as utils from '../utils';
@@ -14,7 +16,7 @@ export default class Parameter {
         this.name = rb.getLabel('parameter');
         this.panelItem = null;
         this.errors = [];
-        
+
         this.type = Parameter.type.string;
         this.arrayItemType = Parameter.type.string;
         this.eval = !rb.getProperty('adminMode');  // if false value comes from database
@@ -39,6 +41,14 @@ export default class Parameter {
         }
     }
 
+    setHighlightUnused(highlightUnused) {
+        if (highlightUnused) {
+            $(`#rbro_menu_item${this.panelItem.getId()}`).addClass('rbroUnusedParameter');
+        } else {
+            $(`#rbro_menu_item${this.panelItem.getId()}`).removeClass('rbroUnusedParameter');
+        }
+    }
+
     /**
      * Called after initialization is finished.
      */
@@ -49,13 +59,14 @@ export default class Parameter {
                 this.rb.addParameter(parameter);
                 let panelItem = new MainPanelItem(
                     'parameter', this.panelItem, parameter,
-                    { hasChildren: true, showAdd: this.editable, showDelete: this.editable, draggable: true }, this.rb);
+                    { hasChildren: true, showAdd: parameter.editable, showDelete: parameter.editable, draggable: true }, this.rb);
                 parameter.setPanelItem(panelItem);
                 this.panelItem.appendChild(panelItem);
                 parameter.setup();
                 this.rb.notifyEvent(parameter, Command.operation.add);
             }
         }
+        this.updateMenuItemDisplay();
     }
 
     /**
@@ -63,7 +74,8 @@ export default class Parameter {
      * @returns {String[]}
      */
     getFields() {
-        return ['id', 'name', 'type', 'arrayItemType', 'eval', 'nullable', 'pattern', 'expression', 'showOnlyNameType', 'testData'];
+        return ['id', 'name', 'type', 'arrayItemType', 'eval', 'nullable', 'pattern',
+            'expression', 'showOnlyNameType', 'testData'];
     }
 
     getId() {
@@ -102,14 +114,27 @@ export default class Parameter {
         return this[field];
     }
 
-    setValue(field, value, elSelector, isShown) {
+    setValue(field, value) {
         this[field] = value;
         if (field === 'type') {
-            if (isShown && value === Parameter.type.date) {
-                $('#rbro_parameter_test_data').attr('placeholder', this.rb.getLabel('parameterTestDataDatePattern'));
-            } else {
-                $('#rbro_parameter_test_data').attr('placeholder', '');
-            }
+            this.updateMenuItemDisplay();
+        }
+    }
+
+    /**
+     * Updates visibility of menu panel item (buttons, children) for this parameter.
+     *
+     * Must be called initially and when parameter type changes.
+     */
+    updateMenuItemDisplay() {
+        if (this.type === Parameter.type.array || this.type === Parameter.type.map) {
+            $(`#rbro_menu_item_add${this.getId()}`).show();
+            $(`#rbro_menu_item_children${this.getId()}`).show();
+            $(`#rbro_menu_item_children_toggle${this.getId()}`).show();
+        } else {
+            $(`#rbro_menu_item_add${this.getId()}`).hide();
+            $(`#rbro_menu_item_children${this.getId()}`).hide();
+            $(`#rbro_menu_item_children_toggle${this.getId()}`).hide();
         }
     }
 
@@ -153,7 +178,7 @@ export default class Parameter {
      * @param {CommandGroupCmd} cmdGroup - possible SetValue commands will be added to this command group.
      */
     addCommandsForChangedParameterName(parameter, newParameterName, cmdGroup) {
-        this.addCommandForChangedParameterName(parameter, newParameterName, 'rbro_parameter_expression', 'expression', cmdGroup);
+        this.addCommandForChangedParameterName(parameter, newParameterName, 'expression', cmdGroup);
         for (let child of this.getChildren()) {
             child.addCommandsForChangedParameterName(parameter, newParameterName, cmdGroup);
         }
@@ -164,11 +189,10 @@ export default class Parameter {
      * specified object field.
      * @param {Parameter} parameter - parameter which will be renamed.
      * @param {String} newParameterName - new name of the parameter.
-     * @param {String} tagId
      * @param {String} field
      * @param {CommandGroupCmd} cmdGroup - possible SetValue command will be added to this command group.
      */
-    addCommandForChangedParameterName(parameter, newParameterName, tagId, field, cmdGroup) {
+    addCommandForChangedParameterName(parameter, newParameterName, field, cmdGroup) {
         let paramParent = parameter.getParent();
         let paramRef = null;
         let newParamRef = null;
@@ -185,7 +209,7 @@ export default class Parameter {
 
         if (paramRef !== null && newParamRef !== null && this.getValue(field).indexOf(paramRef) !== -1) {
             let cmd = new SetValueCmd(
-                this.id, tagId, field, utils.replaceAll(this.getValue(field), paramRef, newParamRef),
+                this.id, field, utils.replaceAll(this.getValue(field), paramRef, newParamRef),
                 SetValueCmd.type.text, this.rb);
             cmdGroup.addCommand(cmd);
         }
@@ -198,7 +222,7 @@ export default class Parameter {
      * @param {String} newParameterName
      * @param {CommandGroupCmd} cmdGroup - possible SetValue command will be added to this command group.
      */
-    addUpdateTestDataCmdForChangedParameter(oldParameter, newParameter, cmdGroup) {
+    addUpdateTestDataCmdForChangedParameter(oldParameterName, newParameterName, cmdGroup) {
         if (this.type === Parameter.type.array) {
             let rows = [];
             try {
@@ -208,8 +232,8 @@ export default class Parameter {
                         let itemRow = {};
                         for (let val in row) {
                             if (row.hasOwnProperty(val)) {
-                                if (val === oldParameter) {
-                                    itemRow[newParameter] = row[val];
+                                if (val === oldParameterName) {
+                                    itemRow[newParameterName] = row[val];
                                 } else {
                                     itemRow[val] = row[val];
                                 }
@@ -220,11 +244,42 @@ export default class Parameter {
                 }
                 let testDataStr = JSON.stringify(rows);
                 if (this.testData !== testDataStr) {
-                    let cmd = new SetValueCmd(this.id, 'rbro_parameter_test_data', 'testData',
-                        testDataStr, SetValueCmd.type.text, this.rb);
+                    let cmd = new SetValueCmd(
+                        this.id, 'testData', testDataStr, SetValueCmd.type.text, this.rb);
                     cmdGroup.addCommand(cmd);
                 }
             } catch (e) {
+            }
+        }
+    }
+
+    /**
+     * Adds AddDeleteParameterCmd to command group parameter in case the
+     * parameter type was changed from/to array. The command will add/delete the internal
+     * 'row_number' parameter which is available for array parameters.
+     * @param {String} newParameterType - new type of the parameter.
+     * @param {CommandGroupCmd} cmdGroup - possible AddDeleteParameterCmd command will
+     * be added to this command group.
+     */
+    addCommandsForChangedParameterType(newParameterType, cmdGroup) {
+        if (this.type !== Parameter.type.array && newParameterType === Parameter.type.array) {
+            let initialData = {
+                name: 'row_number', type: Parameter.type.number, eval: false, editable: false,
+                showOnlyNameType: true
+            };
+            let cmd = new AddDeleteParameterCmd(true, initialData, this.rb.getUniqueId(), this.getId(), 0, this.rb);
+            cmd.setShowDelete(false);
+            cmdGroup.addCommand(cmd);
+        } else if (this.type === Parameter.type.array && newParameterType !== Parameter.type.array) {
+            let children = this.getChildren();
+            for (let child of children) {
+                if (child.getValue('name') === 'row_number' && !child.getValue('editable')) {
+                    let cmd = new AddDeleteParameterCmd(
+                        false, child.toJS(), child.getId(), this.getId(),
+                        child.getPanelItem().getSiblingPosition(), this.rb);
+                    cmdGroup.addCommand(cmd);
+                    break;
+                }
             }
         }
     }
@@ -255,13 +310,14 @@ export default class Parameter {
     }
 
     /**
-     * In case of map parameter all child parameters are appended, for other parameter types the
-     * parameter itself is appended. Parameters with type array are only added if explicitly
-     * specified in allowedTypes parameter.
-     * Used for parameter popup window.
+     * In case of map parameter all child parameters are appended,
+     * for other parameter types the parameter itself is appended.
+     * Parameters with type array are only added if explicitly specified
+     * in allowedTypes parameter. Used for parameter popup window.
+
      * @param {Object[]} parameters - list where parameter items will be appended to.
-     * @param {String[]} allowedTypes - specify allowed parameter types which will be added to the
-     * parameter list. If not set all parameter types are allowed.
+     * @param {String[]} allowedTypes - specify allowed parameter types which will be
+     * added to the parameter list. If not set all parameter types are allowed.
      */
     appendParameterItems(parameters, allowedTypes) {
         if (this.type === Parameter.type.map) {
@@ -302,18 +358,54 @@ export default class Parameter {
 
     /**
      * Appends field parameters of array parameter.
-     * Used for parameter popup window of sum/average expression field.
+     *
+     * Used in parameter popup window for parameter expression.
+     *
      * @param {Object[]} parameters - list where parameter items will be appended to.
-     * @param {String} fieldType - allowed parameter type which will be added to the
-     * parameter list. If empty all parameter types are allowed.
+     * @param {String[]} allowedTypes - specify allowed parameter types which will be
+     * added to the parameter list. If not set all parameter types are allowed.
+     * @param {Boolean} relative - if true then added parameters are relative
+     * to this one. This means that only the parameter name itself will
+     * be set for the added parameters and parent parameters will also be searched.
+     * If false then the full name including name of parent parameter will be set.
+     * This is used when a parameter is selected for a function, e.g. sum or average
+     * of a list field.
      */
-    appendFieldParameterItems(parameters, fieldType) {
+    appendFieldParameterItems(parameters, allowedTypes, relative) {
         if (this.type === Parameter.type.array) {
+            let firstRowParam = true;
             for (let child of this.panelItem.getChildren()) {
                 let parameter = child.getData();
-                if (!fieldType || parameter.getValue('type') === fieldType) {
-                    parameters.push({ name: this.name + '.' + parameter.getName(), description: '' });
+                if (!Array.isArray(allowedTypes) ||
+                        allowedTypes.indexOf(parameter.getValue('type')) !== -1) {
+                    if (relative) {
+                        if (firstRowParam) {
+                            parameters.push({
+                                separator: true, id: this.id,
+                                separatorClass: 'rbroParameterRowGroup',
+                                name: this.rb.getLabel('parameterRowParams')
+                            });
+                        }
+                        let paramName = parameter.getName();
+                        parameters.push({
+                            name: paramName, nameLowerCase: paramName.toLowerCase(),
+                            id: parameter.getId(), description: ''
+                        });
+                    } else {
+                        let paramName = this.name + '.' + parameter.getName();
+                        parameters.push({
+                            name: paramName, nameLowerCase: paramName.toLowerCase(),
+                            id: parameter.getId(), description: ''
+                        });
+                    }
+                    firstRowParam = false;
                 }
+            }
+        }
+        if (relative) {
+            let parent = this.getParent();
+            if (parent !== null) {
+                parent.appendFieldParameterItems(parameters, allowedTypes, relative);
             }
         }
     }
@@ -334,16 +426,18 @@ export default class Parameter {
             fields.push(fieldInfo);
         } else {
             for (let child of this.getChildren()) {
-                let fieldInfo = { name: child.getName() };
-                if (child.getValue('type') === Parameter.type.simpleArray) {
-                    fieldInfo.type = child.getValue('arrayItemType');
-                    fieldInfo.allowMultiple = true;
-                    fieldInfo.arraySize = 1;
-                } else {
-                    fieldInfo.type = child.getValue('type');
-                    fieldInfo.allowMultiple = false;
+                if (!child.showOnlyNameType) {
+                    let fieldInfo = { name: child.getName() };
+                    if (child.getValue('type') === Parameter.type.simpleArray) {
+                        fieldInfo.type = child.getValue('arrayItemType');
+                        fieldInfo.allowMultiple = true;
+                        fieldInfo.arraySize = 1;
+                    } else {
+                        fieldInfo.type = child.getValue('type');
+                        fieldInfo.allowMultiple = false;
+                    }
+                    fields.push(fieldInfo);
                 }
-                fields.push(fieldInfo);
             }
         }
         let rows = [];
@@ -393,6 +487,16 @@ export default class Parameter {
                 }
             }
         }
+    }
+
+    /**
+     * Returns class name.
+     * This can be useful for introspection when the class names are mangled
+     * due to the webpack uglification process.
+     * @returns {string}
+     */
+    getClassName() {
+        return 'Parameter';
     }
 }
 

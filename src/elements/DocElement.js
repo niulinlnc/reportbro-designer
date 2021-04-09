@@ -4,6 +4,7 @@ import SetValueCmd from '../commands/SetValueCmd';
 import Band from '../container/Band';
 import Parameter from '../data/Parameter';
 import * as utils from '../utils';
+import {getEventAbsPos} from "../utils";
 
 /**
  * Base class for all doc elements.
@@ -48,7 +49,7 @@ export default class DocElement {
         this.y = '' + this.y;
         this.width = '' + this.width;
         this.height = '' + this.height;
-        
+
         this.xVal = utils.convertInputToNumber(this.x);
         this.yVal = utils.convertInputToNumber(this.y);
         this.widthVal = utils.convertInputToNumber(this.width);
@@ -81,16 +82,85 @@ export default class DocElement {
     }
 
     /**
+     * Register event handler for a container element so it can be dragged and
+     * allow selection on double click.
+     */
+    registerContainerEventHandlers() {
+        this.el
+            .dblclick(event => {
+                if (!this.rb.isSelectedObject(this.id)) {
+                    this.rb.selectObject(this.id, true);
+                    event.stopPropagation();
+                }
+            })
+            .mousedown(event => {
+                if (event.shiftKey) {
+                    this.rb.deselectObject(this.id);
+                    event.stopPropagation();
+                } else {
+                    if (this.rb.isSelectedObject(this.id)) {
+                        this.rb.getDocument().startDrag(event.originalEvent.pageX, event.originalEvent.pageY,
+                            this.id, this.containerId, this.linkedContainerId,
+                            this.getElementType(), DocElement.dragType.element);
+                        event.stopPropagation();
+                    } else {
+                        this.rb.deselectAll(true);
+                    }
+                }
+            })
+            .on('touchstart', event => {
+                if (this.rb.isSelectedObject(this.id)) {
+                    let absPos = getEventAbsPos(event);
+                    this.rb.getDocument().startDrag(absPos.x, absPos.y,
+                        this.id, this.containerId, this.linkedContainerId,
+                        this.getElementType(), DocElement.dragType.element);
+                }
+                event.preventDefault();
+            })
+            .on('touchmove', event => {
+                this.rb.getDocument().processDrag(event);
+            })
+            .on('touchend', event => {
+                this.rb.getDocument().stopDrag();
+            });
+    }
+
+    /**
      * Register event handlers so element can be selected, dragged and resized.
      */
     registerEventHandlers() {
         this.el
             .dblclick(event => {
-                this.handleClick(event, true);
+                this.handleDoubleClick(event);
             })
             .mousedown(event => {
                 this.handleClick(event, false);
+            })
+            .on('touchstart', event => {
+                if (!this.rb.isSelectedObject(this.id)) {
+                    this.handleClick(event, true);
+                } else {
+                    let absPos = getEventAbsPos(event);
+                    this.rb.getDocument().startDrag(absPos.x, absPos.y,
+                        this.id, this.containerId, this.linkedContainerId,
+                        this.getElementType(), DocElement.dragType.element);
+                    event.preventDefault();
+                }
+            })
+            .on('touchmove', event => {
+                if (this.rb.isSelectedObject(this.id)) {
+                    this.rb.getDocument().processDrag(event);
+                }
+            })
+            .on('touchend', event => {
+                if (this.rb.isSelectedObject(this.id)) {
+                    this.rb.getDocument().stopDrag();
+                }
             });
+    }
+
+    handleDoubleClick(event) {
+        this.handleClick(event, true);
     }
 
     /**
@@ -123,7 +193,7 @@ export default class DocElement {
         } else {
             if (event.shiftKey) {
                 this.rb.deselectObject(this.id);
-            } else {
+            } else if (!ignoreSelectedContainer) {
                 this.rb.getDocument().startDrag(event.originalEvent.pageX, event.originalEvent.pageY,
                     this.id, this.containerId, this.linkedContainerId,
                     this.getElementType(), DocElement.dragType.element);
@@ -252,27 +322,24 @@ export default class DocElement {
             height = containerSize.height - y;
         }
 
-        if (x !== this.xVal && this.getXTagId() !== '') {
-            let cmd = new SetValueCmd(this.id, this.getXTagId(), 'x',
-                '' + x, SetValueCmd.type.text, this.rb);
+        if (x !== this.xVal && this.hasProperty('x')) {
+            let cmd = new SetValueCmd(
+                this.id, 'x', '' + x, SetValueCmd.type.text, this.rb);
             cmd.disableSelect();
             cmdGroup.addCommand(cmd);
         }
-        if (y !== this.yVal && this.getYTagId() !== '') {
-            let cmd = new SetValueCmd(this.id, this.getYTagId(), 'y',
-                '' + y, SetValueCmd.type.text, this.rb);
+        if (y !== this.yVal && this.hasProperty('y')) {
+            let cmd = new SetValueCmd(
+                this.id, 'y', '' + y, SetValueCmd.type.text, this.rb);
             cmd.disableSelect();
             cmdGroup.addCommand(cmd);
         }
-        if (width !== this.widthVal && this.getWidthTagId() !== '') {
-            let cmd = new SetValueCmd(this.id, this.getWidthTagId(), 'width',
-                '' + width, SetValueCmd.type.text, this.rb);
-            cmd.disableSelect();
-            cmdGroup.addCommand(cmd);
+        if (width !== this.getDisplayWidth() && this.hasProperty('width')) {
+            this.addCommandsForChangedWidth(width, true, cmdGroup);
         }
-        if (height !== this.heightVal && this.getHeightTagId() !== '') {
-            let cmd = new SetValueCmd(this.id, this.getHeightTagId(), 'height',
-                '' + height, SetValueCmd.type.text, this.rb);
+        if (height !== this.getDisplayHeight() && this.hasProperty('height')) {
+            let cmd = new SetValueCmd(
+                this.id, 'height', '' + height, SetValueCmd.type.text, this.rb);
             cmd.disableSelect();
             cmdGroup.addCommand(cmd);
         }
@@ -284,7 +351,7 @@ export default class DocElement {
                 if (child.getData() instanceof DocElement) {
                     let docElement = child.getData();
                     docElement.checkBounds(docElement.getValue('xVal'), docElement.getValue('yVal'),
-                        docElement.getValue('widthVal'), docElement.getValue('heightVal'),
+                        docElement.getDisplayWidth(), docElement.getDisplayHeight(),
                         linkedContainerSize, cmdGroup);
                 }
             }
@@ -295,7 +362,7 @@ export default class DocElement {
         return this[field];
     }
 
-    setValue(field, value, elSelector, isShown) {
+    setValue(field, value) {
         this[field] = value;
         if (field === 'x' || field === 'y' || field === 'width' || field === 'height') {
             this[field + 'Val'] = utils.convertInputToNumber(value);
@@ -328,19 +395,53 @@ export default class DocElement {
     }
 
     /**
+     * Returns value to use for updating input control.
+     * Can be overridden in case update value can be different from internal value, e.g.
+     * width for table cells with colspan > 1.
+     * @param {Number} field - field name.
+     * @param {Number} value - value for update.
+     */
+    getUpdateValue(field, value) {
+        return value;
+    }
+
+    getDisplayWidth() {
+        return this.widthVal;
+    }
+
+    getDisplayHeight() {
+        return this.heightVal;
+    }
+
+    /**
      * Returns all data fields of this object. The fields are used when serializing the object.
      * @returns {String[]}
      */
     getFields() {
+        let fields = this.getProperties();
+        fields.splice(0, 0, 'id', 'containerId');
+        return fields;
+    }
+
+    /**
+     * Returns all fields of this object that can be modified in the properties panel.
+     * @returns {String[]}
+     */
+    getProperties() {
         return [];
+    }
+
+    /**
+     * Returns true if the given property is available for this object.
+     * @param {String} property - property name.
+     * @returns {Boolean}
+     */
+    hasProperty(property) {
+        return this.getProperties().indexOf(property) !== -1;
     }
 
     getElementType() {
         return DocElement.type.none;
-    }
-
-    setBorderAll(fieldPrefix, value) {
-        this[fieldPrefix + 'borderAll'] = value;
     }
 
     updateDisplay() {
@@ -369,10 +470,11 @@ export default class DocElement {
         let dragX, dragY;
         let posX1 = this.xVal;
         let posY1 = this.yVal;
-        let posX2 = posX1 + this.widthVal;
-        let posY2 = posY1 + this.heightVal;
+        let posX2 = posX1 + this.getDisplayWidth();
+        let posY2 = posY1 + this.getDisplayHeight();
+        let minWidth = this.getMinWidth();
         let maxWidth = this.getMaxWidth();
-        const MIN_DRAG_SIZE = 20;
+        let minHeight = this.getMinHeight();
         if (dragType === DocElement.dragType.element) {
             dragX = posX1 + diffX;
             if (gridSize !== 0) {
@@ -386,64 +488,68 @@ export default class DocElement {
             rv.y = dragY - posY1;
         } else {
             let containerSize = this.getContainerContentSize();
-            if (dragType === DocElement.dragType.sizerNW || dragType === DocElement.dragType.sizerN || dragType === DocElement.dragType.sizerNE) {
+            if (dragType === DocElement.dragType.sizerNW || dragType === DocElement.dragType.sizerN ||
+                    dragType === DocElement.dragType.sizerNE) {
                 dragY = posY1 + diffY;
                 if (gridSize !== 0) {
                     dragY = utils.roundValueToInterval(dragY, gridSize);
                 }
-                if (dragY > posY2 - MIN_DRAG_SIZE) {
+                if (dragY > posY2 - minHeight) {
                     if (gridSize !== 0) {
-                        dragY = utils.roundValueToLowerInterval(posY2 - MIN_DRAG_SIZE, gridSize);
+                        dragY = utils.roundValueToLowerInterval(posY2 - minHeight, gridSize);
                     } else {
-                        dragY = posY2 - MIN_DRAG_SIZE;
+                        dragY = posY2 - minHeight;
                     }
                 } else if (dragY < 0) {
                     dragY = 0;
                 }
                 rv.y = dragY - posY1;
             }
-            if (dragType === DocElement.dragType.sizerNE || dragType === DocElement.dragType.sizerE || dragType === DocElement.dragType.sizerSE) {
+            if (dragType === DocElement.dragType.sizerNE || dragType === DocElement.dragType.sizerE ||
+                    dragType === DocElement.dragType.sizerSE) {
                 dragX = posX2 + diffX;
                 if (gridSize !== 0) {
                     dragX = utils.roundValueToInterval(dragX, gridSize);
                 }
-                if (dragX < posX1 + MIN_DRAG_SIZE) {
+                if (dragX < posX1 + minWidth) {
                     if (gridSize !== 0) {
-                        dragX = utils.roundValueToUpperInterval(posX1 + MIN_DRAG_SIZE, gridSize);
+                        dragX = utils.roundValueToUpperInterval(posX1 + minWidth, gridSize);
                     } else {
-                        dragX = posX1 + MIN_DRAG_SIZE;
+                        dragX = posX1 + minWidth;
                     }
                 } else if (dragX > maxWidth) {
                     dragX = maxWidth;
                 }
                 rv.x = dragX - posX2;
             }
-            if (dragType === DocElement.dragType.sizerSE || dragType === DocElement.dragType.sizerS || dragType === DocElement.dragType.sizerSW) {
+            if (dragType === DocElement.dragType.sizerSE || dragType === DocElement.dragType.sizerS ||
+                    dragType === DocElement.dragType.sizerSW) {
                 dragY = posY2 + diffY;
                 if (gridSize !== 0) {
                     dragY = utils.roundValueToInterval(dragY, gridSize);
                 }
-                if (dragY < posY1 + MIN_DRAG_SIZE) {
+                if (dragY < posY1 + minHeight) {
                     if (gridSize !== 0) {
-                        dragY = utils.roundValueToUpperInterval(posY1 + MIN_DRAG_SIZE, gridSize);
+                        dragY = utils.roundValueToUpperInterval(posY1 + minHeight, gridSize);
                     } else {
-                        dragY = posY1 + MIN_DRAG_SIZE;
+                        dragY = posY1 + minHeight;
                     }
                 } else if (dragY > containerSize.height) {
                     dragY = containerSize.height;
                 }
                 rv.y = dragY - posY2;
             }
-            if (dragType === DocElement.dragType.sizerSW || dragType === DocElement.dragType.sizerW || dragType === DocElement.dragType.sizerNW) {
+            if (dragType === DocElement.dragType.sizerSW || dragType === DocElement.dragType.sizerW ||
+                    dragType === DocElement.dragType.sizerNW) {
                 dragX = posX1 + diffX;
                 if (gridSize !== 0) {
                     dragX = utils.roundValueToInterval(dragX, gridSize);
                 }
-                if (dragX > posX2 - MIN_DRAG_SIZE) {
+                if (dragX > posX2 - minWidth) {
                     if (gridSize !== 0) {
-                        dragX = utils.roundValueToLowerInterval(posX2 - MIN_DRAG_SIZE, gridSize);
+                        dragX = utils.roundValueToLowerInterval(posX2 - minWidth, gridSize);
                     } else {
-                        dragX = posX2 - MIN_DRAG_SIZE;
+                        dragX = posX2 - minWidth;
                     }
                 } else if (dragX < 0) {
                     dragX = 0;
@@ -457,15 +563,15 @@ export default class DocElement {
     updateDrag(diffX, diffY, dragType, dragContainer, cmdGroup) {
         let posX1 = this.xVal;
         let posY1 = this.yVal;
-        let posX2 = posX1 + this.widthVal;
-        let posY2 = posY1 + this.heightVal;
+        let posX2 = posX1 + this.getDisplayWidth();
+        let posY2 = posY1 + this.getDisplayHeight();
         let maxWidth = this.getMaxWidth();
         let containerSize = this.getContainerContentSize();
         if (dragType === DocElement.dragType.element) {
             posX1 += diffX;
-            posX2 = posX1 + this.widthVal;
+            posX2 = posX1 + this.getDisplayWidth();
             posY1 += diffY;
-            posY2 = posY1 + this.heightVal;
+            posY2 = posY1 + this.getDisplayHeight();
         } else {
             if (dragType === DocElement.dragType.sizerNW || dragType === DocElement.dragType.sizerN ||
                 dragType === DocElement.dragType.sizerNE) {
@@ -523,8 +629,8 @@ export default class DocElement {
                 this.checkBounds(posX1, posY1, width, height, containerSize, cmdGroup);
 
                 if (containerChanged) {
-                    let cmd = new SetValueCmd(this.id, null, 'containerId',
-                        dragContainer.getId(), SetValueCmd.type.internal, this.rb);
+                    let cmd = new SetValueCmd(
+                        this.id, 'containerId', dragContainer.getId(), SetValueCmd.type.internal, this.rb);
                     cmdGroup.addCommand(cmd);
                     cmd = new MovePanelItemCmd(this.getPanelItem(), dragContainer.getPanelItem(),
                         dragContainer.getPanelItem().getChildren().length, this.rb);
@@ -536,7 +642,7 @@ export default class DocElement {
                     this.updateDisplay();
                 }
             } else {
-                this.updateDisplayInternal(this.xVal, this.yVal, this.widthVal, this.heightVal);
+                this.updateDisplay();
             }
         } else {
             this.updateDisplayInternal(posX1, posY1, width, height);
@@ -555,7 +661,24 @@ export default class DocElement {
                             this.id, this.containerId, this.linkedContainerId,
                             this.getElementType(), DocElement.dragType['sizer' + sizerVal]);
                         event.stopPropagation();
+                    })
+                    .on('touchstart', event => {
+                        if (this.rb.isSelectedObject(this.id)) {
+                            let absPos = getEventAbsPos(event);
+                            this.rb.getDocument().startDrag(absPos.x, absPos.y,
+                                this.id, this.containerId, this.linkedContainerId,
+                                this.getElementType(), DocElement.dragType['sizer' + sizerVal]);
+                        }
+                        event.preventDefault();
+                        event.stopPropagation();
+                    })
+                    .on('touchmove', event => {
+                        this.rb.getDocument().processDrag(event);
+                    })
+                    .on('touchend', event => {
+                        this.rb.getDocument().stopDrag();
                     });
+
                 elSizerContainer.append(elSizer);
             }
             this.el.addClass('rbroSelected');
@@ -582,40 +705,16 @@ export default class DocElement {
         return ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
     }
 
-    /**
-     * Returns id for dom element of x value.
-     * @returns {String} Is empty in case doc element does not have x value.
-     */
-    getXTagId() {
-        return '';
-    }
-
-    /**
-     * Returns id for dom element of y value.
-     * @returns {String} Is empty in case doc element does not have y value.
-     */
-    getYTagId() {
-        return '';
-    }
-
-    /**
-     * Returns id for dom element of width value.
-     * @returns {String} Is empty in case doc element does not have width value.
-     */
-    getWidthTagId() {
-        return '';
-    }
-
-    /**
-     * Returns id for dom element of height value.
-     * @returns {String} Is empty in case doc element does not have height value.
-     */
-    getHeightTagId() {
-        return '';
-    }
-
     hasBorderSettings() {
         return false;
+    }
+
+    /**
+     * Returns true if the element can be selected when it is inside a
+     * selection area (rectangle specified with pressed mouse button).
+     */
+    isAreaSelectionAllowed() {
+        return true;
     }
 
     isDraggingAllowed() {
@@ -630,6 +729,14 @@ export default class DocElement {
     }
 
     /**
+     * Returns minimum allowed width of element.
+     * @returns {Number}.
+     */
+    getMinWidth() {
+        return 20;
+    }
+
+    /**
      * Returns maximum allowed width of element.
      * This is needed when the element is resized by dragging so the resized element does not overflow its container.
      * @returns {Number}.
@@ -637,6 +744,14 @@ export default class DocElement {
     getMaxWidth() {
         let containerSize = this.getContainerContentSize();
         return containerSize.width;
+    }
+
+    /**
+     * Returns minimum allowed height of element.
+     * @returns {Number}.
+     */
+    getMinHeight() {
+        return 20;
     }
 
     createElement() {
@@ -707,16 +822,15 @@ export default class DocElement {
      * specified object field.
      * @param {Parameter} parameter - parameter which will be renamed.
      * @param {String} newParameterName - new name of the parameter.
-     * @param {String} tagId
      * @param {String} field
      * @param {CommandGroupCmd} cmdGroup - possible SetValue command will be added to this command group.
      */
-    addCommandForChangedParameterName(parameter, newParameterName, tagId, field, cmdGroup) {
+    addCommandForChangedParameterName(parameter, newParameterName, field, cmdGroup) {
         let paramParent = parameter.getParent();
         let dataSources = [];
         let paramRef = null;
         let newParamRef = null;
-        
+
         this.getAllDataSources(dataSources, null);
 
         if (paramParent !== null && paramParent.getValue('type') === Parameter.type.array) {
@@ -755,7 +869,7 @@ export default class DocElement {
 
         if (paramRef !== null && newParamRef !== null && this.getValue(field).indexOf(paramRef) !== -1) {
             let cmd = new SetValueCmd(
-                this.id, tagId, field, utils.replaceAll(this.getValue(field), paramRef, newParamRef),
+                this.id, field, utils.replaceAll(this.getValue(field), paramRef, newParamRef),
                 SetValueCmd.type.text, this.rb);
             cmdGroup.addCommand(cmd);
         }
@@ -777,6 +891,15 @@ export default class DocElement {
                 element.getPanelItem().getSiblingPosition(), this.rb);
             cmdGroup.addCommand(cmd);
         }
+    }
+
+    addCommandsForChangedWidth(newWidth, disableSelect, cmdGroup) {
+        let cmd = new SetValueCmd(
+            this.id, 'width', '' + newWidth, SetValueCmd.type.text, this.rb);
+        if (disableSelect) {
+            cmd.disableSelect();
+        }
+        cmdGroup.addCommand(cmd);
     }
 
     addChildren(docElements) {
@@ -815,10 +938,6 @@ export default class DocElement {
             }
         }
         return ret;
-    }
-
-    toJSON() {
-        return JSON.stringify(this.toJS());
     }
 }
 

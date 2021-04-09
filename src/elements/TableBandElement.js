@@ -2,6 +2,7 @@ import DocElement from './DocElement';
 import TableTextElement from './TableTextElement';
 import AddDeleteDocElementCmd from '../commands/AddDeleteDocElementCmd';
 import CommandGroupCmd from '../commands/CommandGroupCmd';
+import SetValueCmd from '../commands/SetValueCmd';
 import Band from '../container/Band';
 import MainPanelItem from '../menu/MainPanelItem';
 import * as utils from '../utils';
@@ -17,6 +18,7 @@ export default class TableBandElement extends DocElement {
         this.bandType = bandType;
         this.repeatHeader = false;
         this.alwaysPrintOnSamePage = true;
+        this.pageBreak = false;
         this.backgroundColor = '';
         this.alternateBackgroundColor = '';
         this.groupExpression = '';
@@ -24,7 +26,7 @@ export default class TableBandElement extends DocElement {
         this.columnData = [];
 
         this.heightVal = 0;
-        
+
         this.setInitialData(initialData);
     }
 
@@ -67,14 +69,14 @@ export default class TableBandElement extends DocElement {
         return null;
     }
 
-    setValue(field, value, elSelector, isShown) {
+    setValue(field, value) {
         this[field] = value;
         if (field === 'height') {
             let height = utils.convertInputToNumber(value);
             this[field + 'Val'] = height;
             this.getElement().find('td').css({ height: this.rb.toPixel(height) });
             for (let col of this.columnData) {
-                col.setValue(field, value, elSelector, isShown);
+                col.setValue(field, value);
             }
             let table = this.getParent();
             if (table !== null) {
@@ -90,7 +92,17 @@ export default class TableBandElement extends DocElement {
      * @returns {String[]}
      */
     getFields() {
-        let fields = ['id', 'height', 'backgroundColor'];
+        let fields = this.getProperties();
+        fields.splice(0, 0, 'id');
+        return fields;
+    }
+
+    /**
+     * Returns all fields of this object that can be modified in the properties panel.
+     * @returns {String[]}
+     */
+    getProperties() {
+        let fields = ['height', 'backgroundColor'];
         if (this.bandType === Band.bandType.header) {
             fields.push('repeatHeader');
         } else if (this.bandType === Band.bandType.content) {
@@ -98,6 +110,7 @@ export default class TableBandElement extends DocElement {
             fields.push('groupExpression');
             fields.push('printIf');
             fields.push('alwaysPrintOnSamePage');
+            fields.push('pageBreak');
         }
         return fields;
     }
@@ -117,12 +130,12 @@ export default class TableBandElement extends DocElement {
         return [];
     }
 
-    getHeightTagId() {
-        return 'rbro_table_band_element_height';
-    }
-
     getHeight() {
         return this.heightVal;
+    }
+
+    isAreaSelectionAllowed() {
+        return false;
     }
 
     isDraggingAllowed() {
@@ -196,12 +209,13 @@ export default class TableBandElement extends DocElement {
             }
             if (useColDataIndex !== -1 && useColDataIndex < this.columnData.length) {
                 data = this.columnData[useColDataIndex];
+                data.columnIndex = i;
                 dataId = data.id;
                 if (!isUpdate) {
                     data.band = this.band;
-                    data.columnIndex = i;
                     data.parentId = this.id;
                     data.tableId = this.parentId;
+                    data.height = this.height;
                 }
             } else {
                 data = { band: this.band, columnIndex: i, parentId: this.id, tableId: this.parentId,
@@ -217,9 +231,13 @@ export default class TableBandElement extends DocElement {
             let panelItemText = new MainPanelItem(DocElement.type.text, this.panelItem, textElement, { showDelete: false }, this.rb);
             textElement.setPanelItem(panelItemText);
             this.panelItem.appendChild(panelItemText);
-            textElement.setup(true);
         }
         this.columnData = newColumnData;
+        // call setup of table text elements after columnData of table band has been set
+        for (let col of newColumnData) {
+            col.setup(true);
+        }
+        this.updateColumnDisplay();
         this.getElement().find('td').css({ height: this.rb.toPixel(this.heightVal) });
     }
 
@@ -240,9 +258,37 @@ export default class TableBandElement extends DocElement {
     }
 
     updateColumnWidth(columnIndex, width) {
+        let i = 0;
         if (columnIndex < this.columnData.length) {
-            let colData = this.columnData[columnIndex];
-            colData.updateColumnWidth(width);
+            this.columnData[columnIndex].setWidth(width);
+        }
+    }
+
+    /**
+     * Update display of columns depending on column span value of preceding columns.
+     * e.g. if a column has column span value of 3 then the next two columns will be hidden.
+     */
+    updateColumnDisplay() {
+        let i = 0;
+        while (i < this.columnData.length) {
+            let colData = this.columnData[i];
+            let colWidth = colData.getValue('widthVal');
+            let colSpan = colData.getValue('colspanVal');
+            colData.getElement().show();
+            if (colSpan > 1) {
+                let colspanEndIndex = ((i + colSpan) < this.columnData.length) ? (i + colSpan) : this.columnData.length;
+                i++;
+                // hide columns within colspan
+                while (i < colspanEndIndex) {
+                    colWidth += this.columnData[i].getValue('widthVal');
+                    this.columnData[i].getElement().hide();
+                    i++;
+                }
+            } else {
+                i++;
+            }
+            colData.setDisplayWidth(colWidth);
+            colData.updateDisplay();
         }
     }
 
@@ -251,6 +297,35 @@ export default class TableBandElement extends DocElement {
             return this.columnData[columnIndex];
         }
         return null;
+    }
+
+    getColumns() {
+        return this.columnData;
+    }
+
+    /**
+     * Is called when column width of a cell was changed to update all DOM elements accordingly.
+     * @param {Number} columnIndex - column index of changed cell.
+     * @param {Number} newColumnWidth
+     */
+    notifyColumnWidthResized(columnIndex, newColumnWidth) {
+        let i = 0;
+        while (i < this.columnData.length) {
+            let column = this.columnData[i];
+            let nextCellIndex = column.getNextCellIndex();
+            if (nextCellIndex > columnIndex) {
+                if (nextCellIndex > i + 1) {
+                    for (let j = i; j < nextCellIndex && j < this.columnData.length; j++) {
+                        if (j !== columnIndex) {
+                            newColumnWidth += this.columnData[j].getValue('widthVal');
+                        }
+                    }
+                }
+                column.updateDisplayInternalNotify(0, 0, newColumnWidth, column.getValue('heightVal'), false);
+                break;
+            }
+            i = nextCellIndex;
+        }
     }
 
     /**
@@ -269,13 +344,25 @@ export default class TableBandElement extends DocElement {
 
     getWidth() {
         let width = 0;
-        for (let col of this.columnData) {
-            width += col.getValue('widthVal');
+        let i = 0;
+        while (i < this.columnData.length) {
+            let col = this.columnData[i];
+            width += col.getDisplayWidth();
+            let colspan = col.getValue('colspanVal');
+            if (colspan > 1) {
+                i += colspan;
+            } else {
+                i++;
+            }
         }
         return width;
     }
 
-    getColumnWidths() {
+    /**
+     * Returns array of all cell widths of this row.
+     * @returns {Number[]} array of cell widths.
+     */
+    getSingleCellWidths() {
         let widths = [];
         for (let col of this.columnData) {
             widths.push(col.getValue('widthVal'));
@@ -300,7 +387,7 @@ export default class TableBandElement extends DocElement {
 
                 // increase content row count of table
                 let contentRows = utils.convertInputToNumber(table.getValue('contentRows')) + 1;
-                table.setValue('contentRows', contentRows, 'rbro_table_element_content_rows', false);
+                table.setValue('contentRows', contentRows);
 
                 let contentRow = table.getValue('contentDataRows')[rowIndex];
                 let data = { height: contentRow.height, columnData: [] };
@@ -338,7 +425,7 @@ export default class TableBandElement extends DocElement {
                 cmdGroup.addCommand(cmd);
 
                 // decrease content row count of table
-                table.setValue('contentRows', contentRows - 1, 'rbro_table_element_content_rows', false);
+                table.setValue('contentRows', contentRows - 1);
 
                 // remove content row
                 table.getValue('contentDataRows').splice(rowIndex, 1);
@@ -366,5 +453,15 @@ export default class TableBandElement extends DocElement {
             ret['columnData'].push(column.toJS());
         }
         return ret;
+    }
+
+    /**
+     * Returns class name.
+     * This can be useful for introspection when the class names are mangled
+     * due to the webpack uglification process.
+     * @returns {string}
+     */
+    getClassName() {
+        return 'TableBandElement';
     }
 }

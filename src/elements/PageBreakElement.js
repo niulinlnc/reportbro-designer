@@ -17,16 +17,16 @@ export default class PageBreakElement extends DocElement {
         this.updateStyle();
     }
 
-    setValue(field, value, elSelector, isShown) {
-        super.setValue(field, value, elSelector, isShown);
+    setValue(field, value) {
+        super.setValue(field, value);
     }
 
     /**
-     * Returns all data fields of this object. The fields are used when serializing the object.
+     * Returns all fields of this object that can be modified in the properties panel.
      * @returns {String[]}
      */
-    getFields() {
-        return ['id', 'containerId', 'y'];
+    getProperties() {
+        return ['y'];
     }
 
     getElementType() {
@@ -49,13 +49,19 @@ export default class PageBreakElement extends DocElement {
         return [];
     }
 
-    getYTagId() {
-        return 'rbro_page_break_element_position_y';
-    }
-
     createElement() {
         this.el = $(`<div id="rbro_el${this.id}" class="rbroDocElement rbroPageBreakElement"></div>`);
         this.appendToContainer();
         super.registerEventHandlers();
+    }
+
+    /**
+     * Returns class name.
+     * This can be useful for introspection when the class names are mangled
+     * due to the webpack uglification process.
+     * @returns {string}
+     */
+    getClassName() {
+        return 'PageBreakElement';
     }
 }

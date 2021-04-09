@@ -88,7 +88,8 @@ export default class MainPanelItem {
                                 draggedObj.getValue('widthVal'), draggedObj.getValue('heightVal'),
                                 dropInfo.container.getSize(), cmdGroup);
 
-                            let cmd = new SetValueCmd(draggedObj.getId(), null, 'containerId',
+                            let cmd = new SetValueCmd(
+                                draggedObj.getId(), 'containerId',
                                 dropInfo.container.getId(), SetValueCmd.type.internal, this.rb);
                             cmdGroup.addCommand(cmd);
                         }
@@ -100,10 +101,10 @@ export default class MainPanelItem {
                     }
                 }
             });
-        
+
         let nameDiv = $(`<div class="rbroMenuItemText"><span id="rbro_menu_item_name${this.id}">${name}</span></div>`);
         if (this.properties.showAdd) {
-            itemDiv.append($(`<span id="rbro_menu_item_add${this.id}" class="rbroButton rbroRoundButton rbroIcon-plus"></span>`)
+            itemDiv.append($(`<div id="rbro_menu_item_add${this.id}" class="rbroButton rbroRoundButton rbroIcon-plus"></div>`)
                 .click(event => {
                     if (panelName === 'parameter') {
                         let cmd = new AddDeleteParameterCmd(true, {}, this.rb.getUniqueId(), this.getId(), -1, this.rb);
@@ -129,10 +130,7 @@ export default class MainPanelItem {
                     } else if (panelName === 'style') {
                         cmd = new CommandGroupCmd('Delete', this);
                         this.getData().addCommandsForDelete(cmd);
-                    } else if (panelName === DocElement.type.text || panelName === DocElement.type.image ||
-                            panelName === DocElement.type.line || panelName === DocElement.type.table ||
-                            panelName === DocElement.type.pageBreak ||
-                            panelName === DocElement.type.frame || panelName === DocElement.type.section) {
+                    } else if (this.isDocElementPanel()) {
                         if (this.getData() instanceof DocElement) {
                             cmd = new CommandGroupCmd('Delete', this);
                             this.getData().addCommandsForDelete(cmd);
@@ -154,7 +152,17 @@ export default class MainPanelItem {
                 }
             }
             if (this.properties.hasDetails) {
-                this.rb.selectObject(this.id, true);
+                if (!this.rb.isSelectedObject(this.id)) {
+                    let clearSelection =  true;
+                    if (this.isDocElementPanel()) {
+                        clearSelection = !event.shiftKey;
+                    }
+                    this.rb.selectObject(this.id, clearSelection);
+                } else {
+                    if (event.shiftKey) {
+                        this.rb.deselectObject(this.id);
+                    }
+                }
             }
         });
         if (this.properties.hasChildren) {
@@ -201,11 +209,11 @@ export default class MainPanelItem {
     }
 
     setActive() {
-        $('.rbroMenuItem').removeClass('rbroMenuItemActive');
         $(`#rbro_menu_item${this.id}`).addClass('rbroMenuItemActive');
-        if (this.properties.hasDetails) {
-            this.rb.setDetailPanel(this.panelName, this.data);
-        }
+    }
+
+    setInactive() {
+        $(`#rbro_menu_item${this.id}`).removeClass('rbroMenuItemActive');
     }
 
     getParentIds() {
@@ -269,6 +277,36 @@ export default class MainPanelItem {
 
     getChildren() {
         return this.children;
+    }
+
+    /**
+     * Returns child where its data object matches the given name.
+     *
+     * If multiple children have the same name the first child is returned.
+     *
+     * @param {string} name - name of child to search for.
+     * @returns {[MainPanelItem]} child panel or null if no child with given name exists.
+     */
+    getChildByName(name) {
+        return this.getChildByNameExclude(name, null);
+    }
+
+    /**
+     * Returns child where its data object matches the given name but only if not explicitly excluded.
+     *
+     * If multiple children have the same name the first child is returned.
+     *
+     * @param {string} name - name of child to search for.
+     * @param {[Object]} excludeChild - data object which will be excluded from search.
+     * @returns {[MainPanelItem]} child panel or null if no child with given name exists.
+     */
+    getChildByNameExclude(name, excludeChild) {
+        for (let child of this.children) {
+            if (child.getData() !== null && child.getData() !== excludeChild && child.getData().getName() === name) {
+                return child;
+            }
+        }
+        return null;
     }
 
     removeChild(child) {
@@ -402,5 +440,12 @@ export default class MainPanelItem {
             }
         }
         return rv;
+    }
+
+    isDocElementPanel() {
+        return this.panelName === DocElement.type.text || this.panelName === DocElement.type.image ||
+            this.panelName === DocElement.type.line || this.panelName === DocElement.type.table ||
+            this.panelName === DocElement.type.pageBreak || this.panelName === DocElement.type.barCode ||
+            this.panelName === DocElement.type.frame || this.panelName === DocElement.type.section;
     }
 }

@@ -1,5 +1,140 @@
 # Changelog
 
+## [1.6.0] - 2021-03-19
+
+### Features
+* zoom buttons for document panel
+
+### Changes
+* add parameter to cmdExecutedCallback which indicates if command was done or undone
+* add "copy" suffix to name of pasted parameter and style for unique names
+* only update parameter references on name change if the parameter name is unique
+* Allow starting area selection inside container (frame/section) and
+  do not include container element in area selection
+
+### Bug Fixes
+* set correct cell height when table is created/updated
+
+## [1.5.2] - 2020-10-06
+
+### Changes
+* option to set default font for new text and style
+* update logo and css styling
+* option to set css theme
+* add getClassName method for introspection to command, data and element classes
+
+## [1.5.1] - 2020-07-27
+
+### Features
+* option to highlight unused parameters on report load
+
+### Changes
+* add destroy method to remove dom nodes and event handlers
+* allow border width in 0.5 steps
+
+### Bug Fixes
+* update table width after deleting column
+
+## [1.5.0] - 2020-07-15
+
+### Features
+* option to expand column width if there are hidden columns
+* option to force page break for each new group in a table
+* option to enable text wrap in spreadsheet cell
+
+### Changes
+* show list parameters in popup window for expression
+(this allows to reference fields of the same row in the expression)
+
+### Bug Fixes
+* fix javascript error when parameter name is empty
+
+## [1.4.0] - 2020-04-20
+
+### Features
+* dynamic document element panel which allows modifying multiple
+document elements (also of different kinds) at once
+* allow modifying text style settings when a style is selected
+
+### Changes
+* add selectCallback which is called when an object is selected/deselected
+* add isModified API method to return modified flag
+* allow image parameter type in list parameter
+* add smaller font sizes to drop down (starting from 4)
+* show image preview for images specified by url
+
+### Bug Fixes
+* fix initialization of ReportBro when called without properties
+* fix adding new elements when preview tab exists (Chrome on macOS)
+
+## [1.3.4] - 2019-12-23
+
+### Changes
+* option to show menu buttons to log report template to console and load report template from text
+
+### Bug Fixes
+* fix changing table columns when table contains cells with colspan
+* fix loading report with small table (< 200px) with table positioned near right border
+
+## [1.3.3] - 2019-11-08
+
+### Bug Fixes
+* do not show resize mouse cursor in corners when table is selected
+* fix setting transparent color
+* fix parameter type drop down options in Safari
+* fix content area and ReportBro logo alignment when sidebar is active
+
+## [1.3.2] - 2019-09-03
+
+### Bug Fixes
+* fix freeze when inserting table columns left or right to selected table cell
+* fix checking bounds when table is dragged over right border
+
+## [1.3.1] - 2019-09-02
+
+### Changes
+* do not allow deletion of internal row_number parameter
+* insert internal row_number parameter at top
+
+### Bug Fixes
+* do not show internal row_number parameter in "Edit test data" popup
+
+## [1.3.0] - 2019-08-26
+
+### Features
+* sizer to change main panel width
+* column span field for table text element
+* add internal parameter row_number for list parameters
+* add locales for separate language files (English and German available)
+
+### Changes
+* focus text input when text element is double clicked
+
+### Bug Fixes
+* disable save button depending on modified flag
+* do not allow setting invalid color value
+
+## [1.2.1] - 2019-07-22
+
+### Bug Fixes
+* fix drag & drop and resize of document elements in Firefox
+* fix npm package
+
+## [1.2.0] - 2019-07-05
+
+### Features
+* basic touch support to drag & drop and resize document elements
+* public API methods to get, add and delete objects:
+getUniqueId, getDocElementById, getStyleById, getParameterById, getParameterByName,
+createDocElement, createParameter, createStyle, deleteDocElement, deleteParameter, deleteStyle
+
+### Changes
+* add cmdExecutedCallback which is called when a command is exuected
+
+### Bug Fixes
+* delete existing document elements when loading report
+* fix issue when editing image size
+
 ## [1.1.0] - 2019-01-10
 
 ### Features

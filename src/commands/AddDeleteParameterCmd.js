@@ -6,14 +6,16 @@ import MainPanelItem from '../menu/MainPanelItem';
  * Command to add and delete a parameter.
  * @class
  */
-export default class AddDeleteParameterCmd {
+export default class AddDeleteParameterCmd extends Command {
     constructor(add, initialData, id, parentId, position, rb) {
+        super();
         this.add = add;
         this.initialData = initialData;
         this.parentId = parentId;
         this.position = position;
         this.rb = rb;
         this.id = id;
+        this.showDelete = true;
     }
 
     getName() {
@@ -22,6 +24,10 @@ export default class AddDeleteParameterCmd {
         } else {
             return 'Delete parameter';
         }
+    }
+
+    setShowDelete(showDelete) {
+        this.showDelete = showDelete;
     }
 
     do() {
@@ -46,7 +52,8 @@ export default class AddDeleteParameterCmd {
             let parameter = new Parameter(this.id, this.initialData, this.rb);
             this.rb.addParameter(parameter);
             let panelItem = new MainPanelItem(
-                'parameter', parent.getPanelItem(), parameter, { hasChildren: true, showAdd: true, draggable: true }, this.rb);
+                'parameter', parent.getPanelItem(), parameter,
+                { hasChildren: true, showAdd: true, showDelete: this.showDelete, draggable: true }, this.rb);
             panelItem.openParentItems();
             parameter.setPanelItem(panelItem);
             parent.getPanelItem().insertChild(this.position, panelItem);
@@ -59,9 +66,17 @@ export default class AddDeleteParameterCmd {
         let parameter = this.rb.getDataObject(this.id);
         if (parameter !== null) {
             this.initialData = parameter.toJS();
-            this.rb.notifyEvent(parameter, Command.operation.remove);
             this.rb.deleteParameter(parameter);
-            parameter.getPanelItem().getParent().removeChild(parameter.getPanelItem());
         }
+    }
+
+    /**
+     * Returns class name.
+     * This can be useful for introspection when the class names are mangled
+     * due to the webpack uglification process.
+     * @returns {string}
+     */
+    getClassName() {
+        return 'AddDeleteParameterCmd';
     }
 }

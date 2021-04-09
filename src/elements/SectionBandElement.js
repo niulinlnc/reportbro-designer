@@ -70,8 +70,8 @@ export default class SectionBandElement extends DocElement {
         return pos;
     }
 
-    setValue(field, value, elSelector, isShown) {
-        super.setValue(field, value, elSelector, isShown);
+    setValue(field, value) {
+        super.setValue(field, value);
 
         if (field === 'height') {
             this[field + 'Val'] = utils.convertInputToNumber(value);
@@ -87,9 +87,21 @@ export default class SectionBandElement extends DocElement {
      * @returns {String[]}
      */
     getFields() {
-        let fields = ['id', 'containerId', 'linkedContainerId', 'height', 'alwaysPrintOnSamePage', 'shrinkToContentHeight'];
+        let fields = this.getProperties();
+        fields.splice(0, 0, 'id', 'containerId', 'linkedContainerId');
+        return fields;
+    }
+
+    /**
+     * Returns all fields of this object that can be modified in the properties panel.
+     * @returns {String[]}
+     */
+    getProperties() {
+        let fields;
         if (this.bandType === Band.bandType.header) {
-            fields.push('repeatHeader');
+            fields = ['height', 'repeatHeader', 'shrinkToContentHeight'];
+        } else {
+            fields = ['height', 'alwaysPrintOnSamePage', 'shrinkToContentHeight'];
         }
         return fields;
     }
@@ -116,12 +128,12 @@ export default class SectionBandElement extends DocElement {
         return ['S'];
     }
 
-    getHeightTagId() {
-        return 'rbro_section_band_element_height';
-    }
-
     getHeight() {
         return this.heightVal;
+    }
+
+    isAreaSelectionAllowed() {
+        return false;
     }
 
     isDraggingAllowed() {
@@ -153,5 +165,15 @@ export default class SectionBandElement extends DocElement {
 
     isVisible() {
         return this.visible;
+    }
+
+    /**
+     * Returns class name.
+     * This can be useful for introspection when the class names are mangled
+     * due to the webpack uglification process.
+     * @returns {string}
+     */
+    getClassName() {
+        return 'SectionBandElement';
     }
 }

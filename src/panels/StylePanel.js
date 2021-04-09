@@ -1,31 +1,172 @@
+import PanelBase from './PanelBase';
+import CommandGroupCmd from '../commands/CommandGroupCmd';
 import SetValueCmd from '../commands/SetValueCmd';
 import Style from '../data/Style';
 import DocElement from '../elements/DocElement';
+import TableElement from '../elements/TableElement';
 import * as utils from '../utils';
 
 /**
  * Panel to edit all style properties.
  * @class
  */
-export default class StylePanel {
+export default class StylePanel extends PanelBase {
     constructor(rootElement, rb) {
-        this.rootElement = rootElement;
-        this.rb = rb;
-        this.selectedObjId = null;
+        super('rbro_style', Style, rootElement, rb);
+
+        this.propertyDescriptors = {
+            'name': {
+                'type': SetValueCmd.type.text,
+                'fieldId': 'name'
+            },
+            'bold': {
+                'type': SetValueCmd.type.button,
+                'fieldId': 'bold',
+                'rowId': 'rbro_style_textstyle_row',
+                'singleRowProperty': false,
+                'rowProperties': ['bold', 'italic', 'underline', 'strikethrough']
+            },
+            'italic': {
+                'type': SetValueCmd.type.button,
+                'fieldId': 'italic',
+                'rowId': 'rbro_style_textstyle_row',
+                'singleRowProperty': false,
+                'rowProperties': ['bold', 'italic', 'underline', 'strikethrough']
+            },
+            'underline': {
+                'type': SetValueCmd.type.button,
+                'fieldId': 'underline',
+                'rowId': 'rbro_style_textstyle_row',
+                'singleRowProperty': false,
+                'rowProperties': ['bold', 'italic', 'underline', 'strikethrough']
+            },
+            'strikethrough': {
+                'type': SetValueCmd.type.button,
+                'fieldId': 'strikethrough',
+                'rowId': 'rbro_style_textstyle_row',
+                'singleRowProperty': false,
+                'rowProperties': ['bold', 'italic', 'underline', 'strikethrough']
+            },
+            'horizontalAlignment': {
+                'type': SetValueCmd.type.buttonGroup,
+                'fieldId': 'halignment',
+                'rowId': 'rbro_style_alignment_row',
+                'singleRowProperty': false,
+                'rowProperties': ['horizontalAlignment', 'verticalAlignment']
+            },
+            'verticalAlignment': {
+                'type': SetValueCmd.type.buttonGroup,
+                'fieldId': 'valignment',
+                'rowId': 'rbro_style_alignment_row',
+                'singleRowProperty': false
+            },
+            'textColor': {
+                'type': SetValueCmd.type.color,
+                'allowEmpty': false,
+                'fieldId': 'text_color'
+            },
+            'backgroundColor': {
+                'type': SetValueCmd.type.color,
+                'allowEmpty': true,
+                'fieldId': 'background_color'
+            },
+            'font': {
+                'type': SetValueCmd.type.select,
+                'fieldId': 'font',
+                'rowId': 'rbro_style_font_row',
+                'singleRowProperty': false,
+                'rowProperties': ['font', 'fontSize']
+            },
+            'fontSize': {
+                'type': SetValueCmd.type.select,
+                'fieldId': 'font_size',
+                'rowId': 'rbro_style_font_row',
+                'singleRowProperty': false
+            },
+            'lineSpacing': {
+                'type': SetValueCmd.type.select,
+                'fieldId': 'line_spacing'
+            },
+            'borderAll': {
+                'type': SetValueCmd.type.button,
+                'fieldId': 'border_all',
+                'rowId': 'rbro_style_border_row',
+                'singleRowProperty': false,
+                'rowProperties': ['borderAll', 'borderLeft', 'borderTop', 'borderRight', 'borderBottom']
+            },
+            'borderLeft': {
+                'type': SetValueCmd.type.button,
+                'fieldId': 'border_left',
+                'rowId': 'rbro_style_border_row',
+                'singleRowProperty': false
+            },
+            'borderTop': {
+                'type': SetValueCmd.type.button,
+                'fieldId': 'border_top',
+                'rowId': 'rbro_style_border_row',
+                'singleRowProperty': false
+            },
+            'borderRight': {
+                'type': SetValueCmd.type.button,
+                'fieldId': 'border_right',
+                'rowId': 'rbro_style_border_row',
+                'singleRowProperty': false
+            },
+            'borderBottom': {
+                'type': SetValueCmd.type.button,
+                'fieldId': 'border_bottom',
+                'rowId': 'rbro_style_border_row',
+                'singleRowProperty': false
+            },
+            'borderColor': {
+                'type': SetValueCmd.type.color,
+                'allowEmpty': false,
+                'fieldId': 'border_color'
+            },
+            'borderWidth': {
+                'type': SetValueCmd.type.text,
+                'fieldId': 'border_width'
+            },
+            'paddingLeft': {
+                'type': SetValueCmd.type.text,
+                'fieldId': 'padding_left',
+                'rowId': 'rbro_style_padding_row',
+                'singleRowProperty': false,
+                'rowProperties': ['paddingLeft', 'paddingTop', 'paddingRight', 'paddingBottom']
+            },
+            'paddingTop': {
+                'type': SetValueCmd.type.text,
+                'fieldId': 'padding_top',
+                'rowId': 'rbro_style_padding_row',
+                'singleRowProperty': false
+            },
+            'paddingRight': {
+                'type': SetValueCmd.type.text,
+                'fieldId': 'padding_right',
+                'rowId': 'rbro_style_padding_row',
+                'singleRowProperty': false
+            },
+            'paddingBottom': {
+                'type': SetValueCmd.type.text,
+                'fieldId': 'padding_bottom',
+                'rowId': 'rbro_style_padding_row',
+                'singleRowProperty': false
+            }
+        };
     }
 
-    render(data) {
+    render() {
         let panel = $('<div id="rbro_style_panel" class="rbroHidden"></div>');
         let elDiv = $('<div class="rbroFormRow"></div>');
         elDiv.append(`<label for="rbro_style_name">${this.rb.getLabel('styleName')}:</label>`);
         let elFormField = $('<div class="rbroFormField"></div>');
         let elStyleName = $(`<input id="rbro_style_name">`)
-            .change(event => {
-                if (this.rb.getDataObject(this.selectedObjId) !== null) {
+            .on('input', event => {
+                let obj = this.rb.getSelectedObject();
+                if (obj !== null) {
                     if (elStyleName.val().trim() !== '') {
-                        let cmd = new SetValueCmd(this.selectedObjId, 'rbro_style_name', 'name',
-                            elStyleName.val(), SetValueCmd.type.text, this.rb);
-                        this.rb.executeCommand(cmd);
+                        this.rb.executeCommand(new SetValueCmd(
+                            obj.getId(), 'name', elStyleName.val(), SetValueCmd.type.text, this.rb));
                     } else {
                         elStyleName.val(style.getName());
                     }
@@ -35,206 +176,421 @@ export default class StylePanel {
         elDiv.append(elFormField);
         panel.append(elDiv);
 
-        StylePanel.renderStyle(panel, 'style_', '', DocElement.type.none, this, this.rb);
+        StylePanel.renderStyle(panel, 'style_', '', false, this.rb);
 
         $('#rbro_detail_panel').append(panel);
     }
 
-    static renderPaddingControls(elPanel, idPrefix, fieldPrefix, panel, rb) {
-        let elDiv = $('<div class="rbroFormRow"></div>');
-        elDiv.append(`<label for="rbro_${idPrefix}padding">${rb.getLabel('stylePadding')}:</label>`);
-        let elFormField = $('<div class="rbroFormField rbroSmallInput"></div>');
-        
-        let elPaddingTopDiv = $('<div class="rbroColumnCenter"></div>');
-        let elPaddingTop = $(`<input id="rbro_${idPrefix}padding_top" placeholder="${rb.getLabel('orientationTop')}">`)
-            .on('input', event => {
-                if (rb.getDataObject(panel.getSelectedObjId()) !== null) {
-                    let cmd = new SetValueCmd(panel.getSelectedObjId(), `rbro_${idPrefix}padding_top`,
-                        `${fieldPrefix}paddingTop`, elPaddingTop.val(), SetValueCmd.type.text, rb);
-                    rb.executeCommand(cmd);
-                }
-            });
-        utils.setInputPositiveInteger(elPaddingTop);
-        elPaddingTopDiv.append(elPaddingTop);
-        elFormField.append(elPaddingTopDiv);
+    static renderStyle(elPanel, idPrefix, fieldPrefix, renderDocElementMainStyle, rb) {
+        let elDiv, elFormField;
+        elDiv = $(`<div id="rbro_${idPrefix}textstyle_row" class="rbroFormRow"></div>`);
+        elDiv.append(`<label>${rb.getLabel('styleTextStyle')}:</label>`);
+        elFormField = $('<div class="rbroFormField"></div>');
+        let elTextStyle = $(`<div id="rbro_${idPrefix}textstyle"></div>`);
+        let elBold = $(
+            `<button id="rbro_${idPrefix}bold" name="style_bold"
+             class="rbroButton rbroActionButton rbroIcon-bold" type="button"
+             title="${rb.getLabel('styleBold')}"></button>`)
+            .click(event => {
+                let val = !elBold.hasClass('rbroButtonActive');
+                let cmdGroup = new CommandGroupCmd('Set value', rb);
+                let selectedObjects = rb.getSelectedObjects();
+                for (let i=selectedObjects.length - 1; i >= 0; i--) {
+                    let obj = selectedObjects[i];
+                    cmdGroup.addSelection(obj.getId());
+                    cmdGroup.addCommand(new SetValueCmd(
+                        obj.getId(), `${fieldPrefix}bold`, val, SetValueCmd.type.button, rb));
 
-        let elDiv2 = $('<div class="rbroSplit"></div>');
-        let elPaddingLeft = $(`<input id="rbro_${idPrefix}padding_left" placeholder="${rb.getLabel('orientationLeft')}">`)
-            .on('input', event => {
-                if (rb.getDataObject(panel.getSelectedObjId()) !== null) {
-                    let cmd = new SetValueCmd(panel.getSelectedObjId(), `rbro_${idPrefix}padding_left`,
-                        `${fieldPrefix}paddingLeft`, elPaddingLeft.val(), SetValueCmd.type.text, rb);
-                    rb.executeCommand(cmd);
+                    if (obj instanceof DocElement && obj.getValue(`${fieldPrefix}styleId`) !== '') {
+                        if (obj.getValue(`${fieldPrefix}bold`) !== val) {
+                            cmdGroup.addCommand(new SetValueCmd(
+                                obj.getId(), `${fieldPrefix}styleId`, '', SetValueCmd.type.select, rb));
+                        }
+                    } else if (obj instanceof Style) {
+                        obj.addCommandsForChangedProperty(
+                            'bold', val, SetValueCmd.type.button, cmdGroup);
+                    }
+                }
+                if (!cmdGroup.isEmpty()) {
+                    rb.executeCommand(cmdGroup);
                 }
             });
-        utils.setInputPositiveInteger(elPaddingLeft);
-        elDiv2.append(elPaddingLeft);
-        let elPaddingRight = $(`<input id="rbro_${idPrefix}padding_right" placeholder="${rb.getLabel('orientationRight')}">`)
-            .on('input', event => {
-                if (rb.getDataObject(panel.getSelectedObjId()) !== null) {
-                    let cmd = new SetValueCmd(panel.getSelectedObjId(), `rbro_${idPrefix}padding_right`,
-                        `${fieldPrefix}paddingRight`, elPaddingRight.val(), SetValueCmd.type.text, rb);
-                    rb.executeCommand(cmd);
-                }
-            });
-        utils.setInputPositiveInteger(elPaddingRight);
-        elDiv2.append(elPaddingRight);
-        elFormField.append(elDiv2);
+        elTextStyle.append(elBold);
+        let elItalic = $(
+            `<button id="rbro_${idPrefix}italic"
+             class="rbroButton rbroActionButton rbroIcon-italic" type="button"
+             title="${rb.getLabel('styleItalic')}"></button>`)
+            .click(event => {
+                let val = !elItalic.hasClass('rbroButtonActive');
+                let cmdGroup = new CommandGroupCmd('Set value', rb);
+                let selectedObjects = rb.getSelectedObjects();
+                for (let i=selectedObjects.length - 1; i >= 0; i--) {
+                    let obj = selectedObjects[i];
+                    cmdGroup.addSelection(obj.getId());
+                    cmdGroup.addCommand(new SetValueCmd(
+                        obj.getId(), `${fieldPrefix}italic`, val, SetValueCmd.type.button, rb));
 
-        let elPaddingBottomDiv = $('<div class="rbroColumnCenter"></div>');
-        let elPaddingBottom = $(`<input id="rbro_${idPrefix}padding_bottom" placeholder="${rb.getLabel('orientationBottom')}">`)
-            .on('input', event => {
-                if (rb.getDataObject(panel.getSelectedObjId()) !== null) {
-                    let cmd = new SetValueCmd(panel.getSelectedObjId(), `rbro_${idPrefix}padding_bottom`,
-                        `${fieldPrefix}paddingBottom`, elPaddingBottom.val(), SetValueCmd.type.text, rb);
-                    rb.executeCommand(cmd);
+                    if (obj instanceof DocElement && obj.getValue(`${fieldPrefix}styleId`) !== '') {
+                        if (obj.getValue(`${fieldPrefix}italic`) !== val) {
+                            cmdGroup.addCommand(new SetValueCmd(
+                                obj.getId(), `${fieldPrefix}styleId`, '', SetValueCmd.type.select, rb));
+                        }
+                    } else if (obj instanceof Style) {
+                        obj.addCommandsForChangedProperty(
+                            'italic', val, SetValueCmd.type.button, cmdGroup);
+                    }
+                }
+                if (!cmdGroup.isEmpty()) {
+                    rb.executeCommand(cmdGroup);
                 }
             });
-        utils.setInputPositiveInteger(elPaddingBottom);
-        elPaddingBottomDiv.append(elPaddingBottom);
-        elFormField.append(elPaddingBottomDiv);
+        elTextStyle.append(elItalic);
+        let elUnderline = $(
+            `<button id="rbro_${idPrefix}underline"
+             class="rbroButton rbroActionButton rbroIcon-underline" type="button"
+             title="${rb.getLabel('styleUnderline')}"></button>`)
+            .click(event => {
+                let val = !elUnderline.hasClass('rbroButtonActive');
+                let cmdGroup = new CommandGroupCmd('Set value', rb);
+                let selectedObjects = rb.getSelectedObjects();
+                for (let i=selectedObjects.length - 1; i >= 0; i--) {
+                    let obj = selectedObjects[i];
+                    cmdGroup.addSelection(obj.getId());
+                    cmdGroup.addCommand(new SetValueCmd(
+                        obj.getId(), `${fieldPrefix}underline`, val, SetValueCmd.type.button, rb));
+
+                    if (obj instanceof DocElement && obj.getValue(`${fieldPrefix}styleId`) !== '') {
+                        if (obj.getValue(`${fieldPrefix}underline`) !== val) {
+                            cmdGroup.addCommand(new SetValueCmd(
+                                obj.getId(), `${fieldPrefix}styleId`, '', SetValueCmd.type.select, rb));
+                        }
+                    } else if (obj instanceof Style) {
+                        obj.addCommandsForChangedProperty(
+                            'underline', val, SetValueCmd.type.button, cmdGroup);
+                    }
+                }
+                if (!cmdGroup.isEmpty()) {
+                    rb.executeCommand(cmdGroup);
+                }
+            });
+        elTextStyle.append(elUnderline);
+        let elStrikethrough = $(
+            `<button id="rbro_${idPrefix}strikethrough"
+             class="rbroButton rbroActionButton rbroIcon-strikethrough" type="button"
+             title="${rb.getLabel('styleStrikethrough')}"></button>`)
+            .click(event => {
+                let val = !elStrikethrough.hasClass('rbroButtonActive');
+                let cmdGroup = new CommandGroupCmd('Set value', rb);
+                let selectedObjects = rb.getSelectedObjects();
+                for (let i=selectedObjects.length - 1; i >= 0; i--) {
+                    let obj = selectedObjects[i];
+                    cmdGroup.addSelection(obj.getId());
+                    cmdGroup.addCommand(new SetValueCmd(
+                        obj.getId(), `${fieldPrefix}strikethrough`, val, SetValueCmd.type.button, rb));
+
+                    if (obj instanceof DocElement && obj.getValue(`${fieldPrefix}styleId`) !== '') {
+                        if (obj.getValue(`${fieldPrefix}strikethrough`) !== val) {
+                            cmdGroup.addCommand(new SetValueCmd(
+                                obj.getId(), `${fieldPrefix}styleId`, '', SetValueCmd.type.select, rb));
+                        }
+                    } else if (obj instanceof Style) {
+                        obj.addCommandsForChangedProperty(
+                            'strikethrough', val, SetValueCmd.type.button, cmdGroup);
+                    }
+                }
+                if (!cmdGroup.isEmpty()) {
+                    rb.executeCommand(cmdGroup);
+                }
+            });
+        elTextStyle.append(elStrikethrough);
+        elFormField.append(elTextStyle);
         elDiv.append(elFormField);
         elPanel.append(elDiv);
-    }
 
-    static renderStyle(elPanel, idPrefix, fieldPrefix, elementType, panel, rb) {
-        let elDiv, elFormField;
-        if (elementType === DocElement.type.none || elementType === DocElement.type.text) {
-            elDiv = $('<div class="rbroFormRow"></div>');
-            elDiv.append(`<label>${rb.getLabel('styleTextStyle')}:</label>`);
-            elFormField = $('<div class="rbroFormField"></div>');
-            let elTextStyle = $(`<div id="rbro_${idPrefix}textstyle"></div>`);
-            let elBold = $(`<button id="rbro_${idPrefix}bold" name="style_bold" class="rbroButton rbroActionButton rbroIcon-bold" type="button"
-                    title="${rb.getLabel('styleBold')}"></button>`)
-                .click(event => {
-                    if (rb.getDataObject(panel.getSelectedObjId()) !== null) {
-                        let cmd = new SetValueCmd(panel.getSelectedObjId(), `rbro_${idPrefix}bold`,
-                            `${fieldPrefix}bold`, !elBold.hasClass('rbroButtonActive'), SetValueCmd.type.button, rb);
-                        rb.executeCommand(cmd);
-                    }
-                });
-            elTextStyle.append(elBold);
-            let elItalic = $(`<button id="rbro_${idPrefix}italic"
-                    class="rbroButton rbroActionButton rbroIcon-italic" type="button"
-                    title="${rb.getLabel('styleItalic')}"></button>`)
-                .click(event => {
-                    if (rb.getDataObject(panel.getSelectedObjId()) !== null) {
-                        let cmd = new SetValueCmd(panel.getSelectedObjId(), `rbro_${idPrefix}italic`,
-                            `${fieldPrefix}italic`, !elItalic.hasClass('rbroButtonActive'), SetValueCmd.type.button, rb);
-                        rb.executeCommand(cmd);
-                    }
-                });
-            elTextStyle.append(elItalic);
-            let elUnderline = $(`<button id="rbro_${idPrefix}underline"
-                    class="rbroButton rbroActionButton rbroIcon-underline" type="button"
-                    title="${rb.getLabel('styleUnderline')}"></button>`)
-                .click(event => {
-                    if (rb.getDataObject(panel.getSelectedObjId()) !== null) {
-                        let cmd = new SetValueCmd(panel.getSelectedObjId(), `rbro_${idPrefix}underline`,
-                            `${fieldPrefix}underline`, !elUnderline.hasClass('rbroButtonActive'), SetValueCmd.type.button, rb);
-                        rb.executeCommand(cmd);
-                    }
-                });
-            elTextStyle.append(elUnderline);
-            let elStrikethrough = $(`<button id="rbro_${idPrefix}strikethrough"
-                    class="rbroButton rbroActionButton rbroIcon-strikethrough" type="button"
-                    title="${rb.getLabel('styleStrikethrough')}"></button>`)
-                .click(event => {
-                    if (rb.getDataObject(panel.getSelectedObjId()) !== null) {
-                        let cmd = new SetValueCmd(panel.getSelectedObjId(), `rbro_${idPrefix}strikethrough`,
-                            `${fieldPrefix}strikethrough`, !elStrikethrough.hasClass('rbroButtonActive'), SetValueCmd.type.button, rb);
-                        rb.executeCommand(cmd);
-                    }
-                });
-            elTextStyle.append(elStrikethrough);
-            elFormField.append(elTextStyle);
-            elDiv.append(elFormField);
-            elPanel.append(elDiv);
-        }
-
-        elDiv = $('<div class="rbroFormRow"></div>');
+        elDiv = $(`<div id="rbro_${idPrefix}alignment_row" class="rbroFormRow"></div>`);
         elDiv.append(`<label>${rb.getLabel('styleAlignment')}:</label>`);
         elFormField = $('<div class="rbroFormField"></div>');
         let elHAlignment = $(`<div id="rbro_${idPrefix}halignment"></div>`);
-        let elHAlignmentLeft = $(`<button id="rbro_${idPrefix}halignment_left"
-                class="rbroButton rbroActionButton rbroIcon-text-align-left" type="button" value="left"
-                title="${rb.getLabel('styleHAlignmentLeft')}"></button>`)
+        let elHAlignmentLeft = $(
+            `<button id="rbro_${idPrefix}halignment_left"
+             class="rbroButton rbroActionButton rbroIcon-text-align-left" type="button" value="left"
+             title="${rb.getLabel('styleHAlignmentLeft')}"></button>`)
             .click(event => {
-                if (rb.getDataObject(panel.getSelectedObjId()) !== null) {
-                    let cmd = new SetValueCmd(panel.getSelectedObjId(), `rbro_${idPrefix}halignment`,
-                        `${fieldPrefix}horizontalAlignment`, Style.alignment.left, SetValueCmd.type.buttonGroup, rb);
-                    rb.executeCommand(cmd);
+                let val = Style.alignment.left;
+                let selectedObjects = rb.getSelectedObjects();
+                let valueChanged = false;
+                for (let i=selectedObjects.length - 1; i >= 0; i--) {
+                    if (selectedObjects[i].getValue(`${fieldPrefix}horizontalAlignment`) !== val) {
+                        valueChanged = true;
+                        break;
+                    }
+                }
+
+                if (valueChanged) {
+                    let cmdGroup = new CommandGroupCmd('Set value', rb);
+                    for (let i=selectedObjects.length - 1; i >= 0; i--) {
+                        let obj = selectedObjects[i];
+                        cmdGroup.addSelection(obj.getId());
+                        cmdGroup.addCommand(new SetValueCmd(
+                            obj.getId(), `${fieldPrefix}horizontalAlignment`, val,
+                            SetValueCmd.type.buttonGroup, rb));
+
+                        if (obj instanceof DocElement && obj.getValue(`${fieldPrefix}styleId`) !== '') {
+                            if (obj.getValue(`${fieldPrefix}horizontalAlignment`) !== val) {
+                                cmdGroup.addCommand(new SetValueCmd(
+                                    obj.getId(), `${fieldPrefix}styleId`, '', SetValueCmd.type.select, rb));
+                            }
+                        } else if (obj instanceof Style) {
+                            obj.addCommandsForChangedProperty(
+                                'horizontalAlignment', val, SetValueCmd.type.buttonGroup, cmdGroup);
+                        }
+                    }
+                    if (!cmdGroup.isEmpty()) {
+                        rb.executeCommand(cmdGroup);
+                    }
                 }
             });
         elHAlignment.append(elHAlignmentLeft);
-        let elHAlignmentCenter = $(`<button id="rbro_${idPrefix}halignment_center"
-                class="rbroButton rbroActionButton rbroIcon-text-align-center" type="button" value="center"
-                title="${rb.getLabel('styleHAlignmentCenter')}"></button>`)
+        let elHAlignmentCenter = $(
+            `<button id="rbro_${idPrefix}halignment_center"
+             class="rbroButton rbroActionButton rbroIcon-text-align-center" type="button" value="center"
+             title="${rb.getLabel('styleHAlignmentCenter')}"></button>`)
             .click(event => {
-                if (rb.getDataObject(panel.getSelectedObjId()) !== null) {
-                    let cmd = new SetValueCmd(panel.getSelectedObjId(), `rbro_${idPrefix}halignment`,
-                        `${fieldPrefix}horizontalAlignment`, Style.alignment.center, SetValueCmd.type.buttonGroup, rb);
-                    rb.executeCommand(cmd);
+                let val = Style.alignment.center;
+                let selectedObjects = rb.getSelectedObjects();
+                let valueChanged = false;
+                for (let i=selectedObjects.length - 1; i >= 0; i--) {
+                    if (selectedObjects[i].getValue(`${fieldPrefix}horizontalAlignment`) !== val) {
+                        valueChanged = true;
+                        break;
+                    }
+                }
+
+                if (valueChanged) {
+                    let cmdGroup = new CommandGroupCmd('Set value', rb);
+                    for (let i = selectedObjects.length - 1; i >= 0; i--) {
+                        let obj = selectedObjects[i];
+                        cmdGroup.addSelection(obj.getId());
+                        cmdGroup.addCommand(new SetValueCmd(
+                            obj.getId(), `${fieldPrefix}horizontalAlignment`, val,
+                            SetValueCmd.type.buttonGroup, rb));
+
+                        if (obj instanceof DocElement && obj.getValue(`${fieldPrefix}styleId`) !== '') {
+                            if (obj.getValue(`${fieldPrefix}horizontalAlignment`) !== val) {
+                                cmdGroup.addCommand(new SetValueCmd(
+                                    obj.getId(), `${fieldPrefix}styleId`, '', SetValueCmd.type.select, rb));
+                            }
+                        } else if (obj instanceof Style) {
+                            obj.addCommandsForChangedProperty(
+                                'horizontalAlignment', val, SetValueCmd.type.buttonGroup, cmdGroup);
+                        }
+                    }
+                    if (!cmdGroup.isEmpty()) {
+                        rb.executeCommand(cmdGroup);
+                    }
                 }
             });
         elHAlignment.append(elHAlignmentCenter);
-        let elHAlignmentRight = $(`<button id="rbro_${idPrefix}halignment_right"
-                class="rbroButton rbroActionButton rbroIcon-text-align-right" type="button" value="right"
-                title="${rb.getLabel('styleHAlignmentRight')}"></button>`)
+        let elHAlignmentRight = $(
+            `<button id="rbro_${idPrefix}halignment_right"
+             class="rbroButton rbroActionButton rbroIcon-text-align-right" type="button" value="right"
+             title="${rb.getLabel('styleHAlignmentRight')}"></button>`)
             .click(event => {
-                if (rb.getDataObject(panel.getSelectedObjId()) !== null) {
-                    let cmd = new SetValueCmd(panel.getSelectedObjId(), `rbro_${idPrefix}halignment`,
-                        `${fieldPrefix}horizontalAlignment`, Style.alignment.right, SetValueCmd.type.buttonGroup, rb);
-                    rb.executeCommand(cmd);
+                let val = Style.alignment.right;
+                let selectedObjects = rb.getSelectedObjects();
+                let valueChanged = false;
+                for (let i=selectedObjects.length - 1; i >= 0; i--) {
+                    if (selectedObjects[i].getValue(`${fieldPrefix}horizontalAlignment`) !== val) {
+                        valueChanged = true;
+                        break;
+                    }
+                }
+
+                if (valueChanged) {
+                    let cmdGroup = new CommandGroupCmd('Set value', rb);
+                    for (let i = selectedObjects.length - 1; i >= 0; i--) {
+                        let obj = selectedObjects[i];
+                        cmdGroup.addSelection(obj.getId());
+                        cmdGroup.addCommand(new SetValueCmd(
+                            obj.getId(), `${fieldPrefix}horizontalAlignment`, val,
+                            SetValueCmd.type.buttonGroup, rb));
+
+                        if (obj instanceof DocElement && obj.getValue(`${fieldPrefix}styleId`) !== '') {
+                            if (obj.getValue(`${fieldPrefix}horizontalAlignment`) !== val) {
+                                cmdGroup.addCommand(new SetValueCmd(
+                                    obj.getId(), `${fieldPrefix}styleId`, '', SetValueCmd.type.select, rb));
+                            }
+                        } else if (obj instanceof Style) {
+                            obj.addCommandsForChangedProperty(
+                                'horizontalAlignment', val, SetValueCmd.type.buttonGroup, cmdGroup);
+                        }
+                    }
+                    if (!cmdGroup.isEmpty()) {
+                        rb.executeCommand(cmdGroup);
+                    }
                 }
             });
         elHAlignment.append(elHAlignmentRight);
-        if (elementType === DocElement.type.none || elementType === DocElement.type.text) {
-            let elHAlignmentJustify = $(`<button id="rbro_${idPrefix}halignment_justify"
-                    class="rbroButton rbroActionButton rbroIcon-text-align-justify" type="button" value="justify"
-                    title="${rb.getLabel('styleHAlignmentJustify')}"></button>`)
-                .click(event => {
-                    if (rb.getDataObject(panel.getSelectedObjId()) !== null) {
-                        let cmd = new SetValueCmd(panel.getSelectedObjId(), `rbro_${idPrefix}halignment`,
-                            `${fieldPrefix}horizontalAlignment`, Style.alignment.justify, SetValueCmd.type.buttonGroup, rb);
-                        rb.executeCommand(cmd);
+        let elHAlignmentJustify = $(
+            `<button id="rbro_${idPrefix}halignment_justify"
+             class="rbroButton rbroActionButton rbroIcon-text-align-justify" type="button" value="justify"
+             title="${rb.getLabel('styleHAlignmentJustify')}"></button>`)
+            .click(event => {
+                let val = Style.alignment.justify;
+                let selectedObjects = rb.getSelectedObjects();
+                let valueChanged = false;
+                for (let i=selectedObjects.length - 1; i >= 0; i--) {
+                    if (selectedObjects[i].getValue(`${fieldPrefix}horizontalAlignment`) !== val) {
+                        valueChanged = true;
+                        break;
                     }
-                });
-            elHAlignment.append(elHAlignmentJustify);
-        }
+                }
+
+                if (valueChanged) {
+                    let cmdGroup = new CommandGroupCmd('Set value', rb);
+                    for (let i=selectedObjects.length - 1; i >= 0; i--) {
+                        let obj = selectedObjects[i];
+                        cmdGroup.addSelection(obj.getId());
+                        cmdGroup.addCommand(new SetValueCmd(
+                            obj.getId(), `${fieldPrefix}horizontalAlignment`, val,
+                            SetValueCmd.type.buttonGroup, rb));
+
+                        if (obj instanceof DocElement && obj.getValue(`${fieldPrefix}styleId`) !== '') {
+                            if (obj.getValue(`${fieldPrefix}horizontalAlignment`) !== val) {
+                                cmdGroup.addCommand(new SetValueCmd(
+                                    obj.getId(), `${fieldPrefix}styleId`, '', SetValueCmd.type.select, rb));
+                            }
+                        } else if (obj instanceof Style) {
+                            obj.addCommandsForChangedProperty(
+                                'horizontalAlignment', val, SetValueCmd.type.buttonGroup, cmdGroup);
+                        }
+                    }
+                    if (!cmdGroup.isEmpty()) {
+                        rb.executeCommand(cmdGroup);
+                    }
+                }
+            });
+        elHAlignment.append(elHAlignmentJustify);
         elFormField.append(elHAlignment);
 
         let elVAlignment = $(`<div id="rbro_${idPrefix}valignment"></div>`);
-        let elVAlignmentTop = $(`<button id="rbro_${idPrefix}valignment_top"
-                class="rbroButton rbroActionButton rbroIcon-align-top" type="button" value="top"
-                title="${rb.getLabel('styleVAlignmentTop')}"></button>`)
+        let elVAlignmentTop = $(
+            `<button id="rbro_${idPrefix}valignment_top"
+             class="rbroButton rbroActionButton rbroIcon-align-top" type="button" value="top"
+             title="${rb.getLabel('styleVAlignmentTop')}"></button>`)
             .click(event => {
-                if (rb.getDataObject(panel.getSelectedObjId()) !== null) {
-                    let cmd = new SetValueCmd(panel.getSelectedObjId(), `rbro_${idPrefix}valignment`,
-                        `${fieldPrefix}verticalAlignment`, Style.alignment.top, SetValueCmd.type.buttonGroup, rb);
-                    rb.executeCommand(cmd);
+                let val = Style.alignment.top;
+                let selectedObjects = rb.getSelectedObjects();
+                let valueChanged = false;
+                for (let i=selectedObjects.length - 1; i >= 0; i--) {
+                    if (selectedObjects[i].getValue(`${fieldPrefix}verticalAlignment`) !== val) {
+                        valueChanged = true;
+                        break;
+                    }
+                }
+
+                if (valueChanged) {
+                    let cmdGroup = new CommandGroupCmd('Set value', rb);
+                    for (let i = selectedObjects.length - 1; i >= 0; i--) {
+                        let obj = selectedObjects[i];
+                        cmdGroup.addSelection(obj.getId());
+                        cmdGroup.addCommand(new SetValueCmd(
+                            obj.getId(), `${fieldPrefix}verticalAlignment`, val,
+                            SetValueCmd.type.buttonGroup, rb));
+
+                        if (obj instanceof DocElement && obj.getValue(`${fieldPrefix}styleId`) !== '') {
+                            if (obj.getValue(`${fieldPrefix}verticalAlignment`) !== val) {
+                                cmdGroup.addCommand(new SetValueCmd(
+                                    obj.getId(), `${fieldPrefix}styleId`, '', SetValueCmd.type.select, rb));
+                            }
+                        } else if (obj instanceof Style) {
+                            obj.addCommandsForChangedProperty(
+                                'verticalAlignment', val, SetValueCmd.type.buttonGroup, cmdGroup);
+                        }
+                    }
+                    if (!cmdGroup.isEmpty()) {
+                        rb.executeCommand(cmdGroup);
+                    }
                 }
             });
         elVAlignment.append(elVAlignmentTop);
-        let elVAlignmentMiddle = $(`<button id="rbro_${idPrefix}valignment_middle"
-                class="rbroButton rbroActionButton rbroIcon-align-middle" type="button" value="middle"
-                title="${rb.getLabel('styleVAlignmentMiddle')}"></button>`)
+        let elVAlignmentMiddle = $(
+            `<button id="rbro_${idPrefix}valignment_middle"
+             class="rbroButton rbroActionButton rbroIcon-align-middle" type="button" value="middle"
+             title="${rb.getLabel('styleVAlignmentMiddle')}"></button>`)
             .click(event => {
-                if (rb.getDataObject(panel.getSelectedObjId()) !== null) {
-                    let cmd = new SetValueCmd(panel.getSelectedObjId(), `rbro_${idPrefix}valignment`,
-                        `${fieldPrefix}verticalAlignment`, Style.alignment.middle, SetValueCmd.type.buttonGroup, rb);
-                    rb.executeCommand(cmd);
+                let val = Style.alignment.middle;
+                let selectedObjects = rb.getSelectedObjects();
+                let valueChanged = false;
+                for (let i=selectedObjects.length - 1; i >= 0; i--) {
+                    if (selectedObjects[i].getValue(`${fieldPrefix}verticalAlignment`) !== val) {
+                        valueChanged = true;
+                        break;
+                    }
+                }
+
+                if (valueChanged) {
+                    let cmdGroup = new CommandGroupCmd('Set value', rb);
+                    for (let i = selectedObjects.length - 1; i >= 0; i--) {
+                        let obj = selectedObjects[i];
+                        cmdGroup.addSelection(obj.getId());
+                        cmdGroup.addCommand(new SetValueCmd(
+                            obj.getId(), `${fieldPrefix}verticalAlignment`, val,
+                            SetValueCmd.type.buttonGroup, rb));
+
+                        if (obj instanceof DocElement && obj.getValue(`${fieldPrefix}styleId`) !== '') {
+                            if (obj.getValue(`${fieldPrefix}verticalAlignment`) !== val) {
+                                cmdGroup.addCommand(new SetValueCmd(
+                                    obj.getId(), `${fieldPrefix}styleId`, '', SetValueCmd.type.select, rb));
+                            }
+                        } else if (obj instanceof Style) {
+                            obj.addCommandsForChangedProperty(
+                                'verticalAlignment', val, SetValueCmd.type.buttonGroup, cmdGroup);
+                        }
+                    }
+                    if (!cmdGroup.isEmpty()) {
+                        rb.executeCommand(cmdGroup);
+                    }
                 }
             });
         elVAlignment.append(elVAlignmentMiddle);
-        let elVAlignmentBottom = $(`<button id="rbro_${idPrefix}valignment_bottom"
-                class="rbroButton rbroActionButton rbroIcon-align-bottom" type="button" value="bottom"
-                title="${rb.getLabel('styleVAlignmentBottom')}"></button>`)
+        let elVAlignmentBottom = $(
+            `<button id="rbro_${idPrefix}valignment_bottom"
+             class="rbroButton rbroActionButton rbroIcon-align-bottom" type="button" value="bottom"
+             title="${rb.getLabel('styleVAlignmentBottom')}"></button>`)
             .click(event => {
-                if (rb.getDataObject(panel.getSelectedObjId()) !== null) {
-                    let cmd = new SetValueCmd(panel.getSelectedObjId(), `rbro_${idPrefix}valignment`,
-                        `${fieldPrefix}verticalAlignment`, Style.alignment.bottom, SetValueCmd.type.buttonGroup, rb);
-                    rb.executeCommand(cmd);
+                let val = Style.alignment.bottom;
+                let selectedObjects = rb.getSelectedObjects();
+                let valueChanged = false;
+                for (let i=selectedObjects.length - 1; i >= 0; i--) {
+                    if (selectedObjects[i].getValue(`${fieldPrefix}verticalAlignment`) !== val) {
+                        valueChanged = true;
+                        break;
+                    }
+                }
+
+                if (valueChanged) {
+                    let cmdGroup = new CommandGroupCmd('Set value', rb);
+                    for (let i = selectedObjects.length - 1; i >= 0; i--) {
+                        let obj = selectedObjects[i];
+                        cmdGroup.addSelection(obj.getId());
+                        cmdGroup.addCommand(new SetValueCmd(
+                            obj.getId(), `${fieldPrefix}verticalAlignment`, val,
+                            SetValueCmd.type.buttonGroup, rb));
+
+                        if (obj instanceof DocElement && obj.getValue(`${fieldPrefix}styleId`) !== '') {
+                            if (obj.getValue(`${fieldPrefix}verticalAlignment`) !== val) {
+                                cmdGroup.addCommand(new SetValueCmd(
+                                    obj.getId(), `${fieldPrefix}styleId`, '', SetValueCmd.type.select, rb));
+                            }
+                        } else if (obj instanceof Style) {
+                            obj.addCommandsForChangedProperty(
+                                'verticalAlignment', val, SetValueCmd.type.buttonGroup, cmdGroup);
+                        }
+                    }
+                    if (!cmdGroup.isEmpty()) {
+                        rb.executeCommand(cmdGroup);
+                    }
                 }
             });
         elVAlignment.append(elVAlignmentBottom);
@@ -242,36 +598,74 @@ export default class StylePanel {
         elDiv.append(elFormField);
         elPanel.append(elDiv);
 
-        if (elementType === DocElement.type.none || elementType === DocElement.type.text) {
-            elDiv = $('<div class="rbroFormRow"></div>');
-            elDiv.append(`<label for="rbro_${idPrefix}text_color">${rb.getLabel('styleTextColor')}:</label>`);
-            elFormField = $('<div class="rbroFormField"></div>');
-            let elTextColorContainer = $('<div class="rbroColorPickerContainer"></div>');
-            let elTextColor = $(`<input id="rbro_${idPrefix}text_color">`)
-                .change(event => {
-                    if (rb.getDataObject(panel.getSelectedObjId()) !== null) {
-                        let cmd = new SetValueCmd(panel.getSelectedObjId(), `rbro_${idPrefix}text_color`,
-                            `${fieldPrefix}textColor`, elTextColor.val(), SetValueCmd.type.color, rb);
-                        rb.executeCommand(cmd);
-                    }
-                });
-            elTextColorContainer.append(elTextColor);
-            elFormField.append(elTextColorContainer);
-            elDiv.append(elFormField);
-            elPanel.append(elDiv);
-            utils.initColorPicker(elTextColor, rb);
-        }
+        elDiv = $(`<div id="rbro_${idPrefix}text_color_row" class="rbroFormRow"></div>`);
+        elDiv.append(`<label for="rbro_${idPrefix}text_color">${rb.getLabel('styleTextColor')}:</label>`);
+        elFormField = $('<div class="rbroFormField"></div>');
+        let elTextColorContainer = $('<div class="rbroColorPickerContainer"></div>');
+        let elTextColor = $(`<input id="rbro_${idPrefix}text_color">`)
+            .change(event => {
+                let val = elTextColor.val();
+                if (utils.isValidColor(val)) {
+                    let cmdGroup = new CommandGroupCmd('Set value', rb);
+                    let selectedObjects = rb.getSelectedObjects();
+                    for (let i=selectedObjects.length - 1; i >= 0; i--) {
+                        let obj = selectedObjects[i];
+                        cmdGroup.addSelection(obj.getId());
+                        cmdGroup.addCommand(new SetValueCmd(
+                            obj.getId(), `${fieldPrefix}textColor`, val, SetValueCmd.type.color, rb));
 
-        elDiv = $('<div class="rbroFormRow"></div>');
-        elDiv.append(`<label for="rbro_${idPrefix}background_color">${rb.getLabel('styleBackgroundColor')}:</label>`);
+                        if (obj instanceof DocElement && obj.getValue(`${fieldPrefix}styleId`) !== '') {
+                            if (obj.getValue(`${fieldPrefix}textColor`) !== val) {
+                                cmdGroup.addCommand(new SetValueCmd(
+                                    obj.getId(), `${fieldPrefix}styleId`, '', SetValueCmd.type.select, rb));
+                            }
+                        } else if (obj instanceof Style) {
+                            obj.addCommandsForChangedProperty(
+                                'textColor', val, SetValueCmd.type.color, cmdGroup);
+                        }
+                    }
+                    if (!cmdGroup.isEmpty()) {
+                        rb.executeCommand(cmdGroup);
+                    }
+                }
+            });
+        elTextColorContainer.append(elTextColor);
+        elFormField.append(elTextColorContainer);
+        elDiv.append(elFormField);
+        elPanel.append(elDiv);
+        utils.initColorPicker(elTextColor, rb);
+
+        elDiv = $(`<div id="rbro_${idPrefix}background_color_row" class="rbroFormRow"></div>`);
+        elDiv.append(`<label for="rbro_${idPrefix}background_color">
+                      ${rb.getLabel('styleBackgroundColor')}:</label>`);
         elFormField = $('<div class="rbroFormField"></div>');
         let elBgColorContainer = $('<div class="rbroColorPickerContainer"></div>');
         let elBgColor = $(`<input id="rbro_${idPrefix}background_color">`)
             .change(event => {
-                if (rb.getDataObject(panel.getSelectedObjId()) !== null) {
-                    let cmd = new SetValueCmd(panel.getSelectedObjId(), `rbro_${idPrefix}background_color`,
-                        `${fieldPrefix}backgroundColor`, elBgColor.val(), SetValueCmd.type.color, rb);
-                    rb.executeCommand(cmd);
+                let val = elBgColor.val();
+                if (utils.isValidColor(val)) {
+                    let cmdGroup = new CommandGroupCmd('Set value', rb);
+                    let selectedObjects = rb.getSelectedObjects();
+                    for (let i=selectedObjects.length - 1; i >= 0; i--) {
+                        let obj = selectedObjects[i];
+                        cmdGroup.addSelection(obj.getId());
+                        cmdGroup.addCommand(new SetValueCmd(
+                            obj.getId(), `${fieldPrefix}backgroundColor`, val,
+                            SetValueCmd.type.color, rb));
+
+                        if (obj instanceof DocElement && obj.getValue(`${fieldPrefix}styleId`) !== '') {
+                            if (obj.getValue(`${fieldPrefix}backgroundColor`) !== val) {
+                                cmdGroup.addCommand(new SetValueCmd(
+                                    obj.getId(), `${fieldPrefix}styleId`, '', SetValueCmd.type.select, rb));
+                            }
+                        } else if (obj instanceof Style) {
+                            obj.addCommandsForChangedProperty(
+                                'backgroundColor', val, SetValueCmd.type.color, cmdGroup);
+                        }
+                    }
+                    if (!cmdGroup.isEmpty()) {
+                        rb.executeCommand(cmdGroup);
+                    }
                 }
             });
         elBgColorContainer.append(elBgColor);
@@ -280,387 +674,743 @@ export default class StylePanel {
         elPanel.append(elDiv);
         utils.initColorPicker(elBgColor, rb, { allowEmpty: true });
 
-        if (elementType === DocElement.type.none || elementType === DocElement.type.text) {
-            elDiv = $('<div class="rbroFormRow"></div>');
-            elDiv.append(`<label for="rbro_${idPrefix}font">${rb.getLabel('styleFont')}:</label>`);
-            elFormField = $('<div class="rbroFormField rbroSplit rbroSelectFont"></div>');
-            let strFont = `<select id="rbro_${idPrefix}font">`;
-            for (let font of rb.getFonts()) {
-                strFont += `<option value="${font.value}">${font.name}</option>`;
-            }
-            strFont += '</select>';
-            let elFont = $(strFont)
-                .change(event => {
-                    if (rb.getDataObject(panel.getSelectedObjId()) !== null) {
-                        let cmd = new SetValueCmd(panel.getSelectedObjId(), `rbro_${idPrefix}font`,
-                            `${fieldPrefix}font`, elFont.val(), SetValueCmd.type.select, rb);
-                        rb.executeCommand(cmd);
-                    }
-                });
-            elFormField.append(elFont);
-            let strFontSize = `<select id="rbro_${idPrefix}font_size">`;
-            for (let size of [8,9,10,11,12,13,14,15,16,18,20,22,24,26,28,32,36,40,44,48,54,60,66,72,80]) {
-                strFontSize += `<option value="${size}">${size}</option>`;
-            }
-            strFontSize += '</select>';
-            let elFontSize = $(strFontSize)
-                .change(event => {
-                    if (rb.getDataObject(panel.getSelectedObjId()) !== null) {
-                        let cmd = new SetValueCmd(panel.getSelectedObjId(), `rbro_${idPrefix}font_size`,
-                            `${fieldPrefix}fontSize`, elFontSize.val(), SetValueCmd.type.select, rb);
-                        rb.executeCommand(cmd);
-                    }
-                });
-            elFormField.append(elFontSize);
-            elFormField.append(`<span>${rb.getLabel('styleFontSizeUnit')}</span>`);
-            elDiv.append(elFormField);
-            elPanel.append(elDiv);
-
-            elDiv = $('<div class="rbroFormRow"></div>');
-            elDiv.append(`<label for="rbro_${idPrefix}line_spacing">${rb.getLabel('styleLineSpacing')}:</label>`);
+        if (renderDocElementMainStyle) {
+            elDiv = $(`<div id="rbro_${idPrefix}alternate_background_color_row" class="rbroFormRow"></div>`);
+            elDiv.append(`<label for="rbro_${idPrefix}alternate_background_color">
+                          ${rb.getLabel('docElementAlternateBackgroundColor')}:</label>`);
             elFormField = $('<div class="rbroFormField"></div>');
-            let elLineSpacing = $(`<select id="rbro_${idPrefix}line_spacing">
-                    <option value="1">1</option>
-                    <option value="1.1">1.1</option>
-                    <option value="1.2">1.2</option>
-                    <option value="1.3">1.3</option>
-                    <option value="1.4">1.4</option>
-                    <option value="1.5">1.5</option>
-                    <option value="1.6">1.6</option>
-                    <option value="1.7">1.7</option>
-                    <option value="1.8">1.8</option>
-                    <option value="1.9">1.9</option>
-                    <option value="2">2</option>
-                </select>`)
+            let elAlternateBgColorContainer = $('<div class="rbroColorPickerContainer"></div>');
+            let elAlternateBgColor = $(`<input id="rbro_${idPrefix}alternate_background_color">`)
                 .change(event => {
-                    if (rb.getDataObject(panel.getSelectedObjId()) !== null) {
-                        let cmd = new SetValueCmd(panel.getSelectedObjId(), `rbro_${idPrefix}line_spacing`,
-                            `${fieldPrefix}lineSpacing`, elLineSpacing.val(), SetValueCmd.type.select, rb);
-                        rb.executeCommand(cmd);
+                    let val = elAlternateBgColor.val();
+                    if (utils.isValidColor(val)) {
+                        let cmdGroup = new CommandGroupCmd('Set value', rb);
+                        let selectedObjects = rb.getSelectedObjects();
+                        for (let i=selectedObjects.length - 1; i >= 0; i--) {
+                            let obj = selectedObjects[i];
+                            cmdGroup.addSelection(obj.getId());
+                            cmdGroup.addCommand(new SetValueCmd(
+                                obj.getId(), `${fieldPrefix}alternateBackgroundColor`, val,
+                                SetValueCmd.type.color, rb));
+
+                            if (obj instanceof DocElement && obj.getValue(`${fieldPrefix}styleId`) !== '') {
+                                if (obj.getValue(`${fieldPrefix}alternateBackgroundColor`) !== val) {
+                                    cmdGroup.addCommand(new SetValueCmd(
+                                        obj.getId(), `${fieldPrefix}styleId`, '', SetValueCmd.type.select, rb));
+                                }
+                            } else if (obj instanceof Style) {
+                                obj.addCommandsForChangedProperty(
+                                    'alternateBackgroundColor', val, SetValueCmd.type.color, cmdGroup);
+                            }
+                        }
+                        if (!cmdGroup.isEmpty()) {
+                            rb.executeCommand(cmdGroup);
+                        }
                     }
                 });
-            elFormField.append(elLineSpacing);
+            elAlternateBgColorContainer.append(elAlternateBgColor);
+            elFormField.append(elAlternateBgColorContainer);
             elDiv.append(elFormField);
             elPanel.append(elDiv);
+            utils.initColorPicker(elAlternateBgColor, rb, { allowEmpty: true });
+        }
 
-            let elBorderDiv = $(`<div id="rbro_${idPrefix}border_div"></div>`);
-            elDiv = $('<div class="rbroFormRow"></div>');
+        elDiv = $(`<div id="rbro_${idPrefix}font_row" class="rbroFormRow"></div>`);
+        elDiv.append(`<label for="rbro_${idPrefix}font">${rb.getLabel('styleFont')}:</label>`);
+        elFormField = $('<div class="rbroFormField rbroSplit rbroSelectFont"></div>');
+        let strFont = `<select id="rbro_${idPrefix}font">`;
+        for (let font of rb.getFonts()) {
+            strFont += `<option value="${font.value}">${font.name}</option>`;
+        }
+        strFont += '</select>';
+        let elFont = $(strFont)
+            .change(event => {
+                let val = elFont.val();
+                let cmdGroup = new CommandGroupCmd('Set value', rb);
+                let selectedObjects = rb.getSelectedObjects();
+                for (let i=selectedObjects.length - 1; i >= 0; i--) {
+                    let obj = selectedObjects[i];
+                    cmdGroup.addSelection(obj.getId());
+                    cmdGroup.addCommand(new SetValueCmd(
+                        obj.getId(), `${fieldPrefix}font`, val, SetValueCmd.type.select, rb));
+
+                    if (obj instanceof DocElement && obj.getValue(`${fieldPrefix}styleId`) !== '') {
+                        if (obj.getValue(`${fieldPrefix}font`) !== val) {
+                            cmdGroup.addCommand(new SetValueCmd(
+                                obj.getId(), `${fieldPrefix}styleId`, '', SetValueCmd.type.select, rb));
+                        }
+                    } else if (obj instanceof Style) {
+                        obj.addCommandsForChangedProperty(
+                            'font', val, SetValueCmd.type.select, cmdGroup);
+                    }
+                }
+                if (!cmdGroup.isEmpty()) {
+                    rb.executeCommand(cmdGroup);
+                }
+            });
+        elFormField.append(elFont);
+        let strFontSize = `<select id="rbro_${idPrefix}font_size">`;
+        for (let size of [4,5,6,7,8,9,10,11,12,13,14,15,16,18,20,22,24,26,28,32,36,40,44,48,54,60,66,72,80]) {
+            strFontSize += `<option value="${size}">${size}</option>`;
+        }
+        strFontSize += '</select>';
+        let elFontSize = $(strFontSize)
+            .change(event => {
+                let val = elFontSize.val();
+                let cmdGroup = new CommandGroupCmd('Set value', rb);
+                let selectedObjects = rb.getSelectedObjects();
+                for (let i=selectedObjects.length - 1; i >= 0; i--) {
+                    let obj = selectedObjects[i];
+                    cmdGroup.addSelection(obj.getId());
+                    cmdGroup.addCommand(new SetValueCmd(
+                        obj.getId(), `${fieldPrefix}fontSize`, val, SetValueCmd.type.select, rb));
+
+                    if (obj instanceof DocElement && obj.getValue(`${fieldPrefix}styleId`) !== '') {
+                        if (obj.getValue(`${fieldPrefix}fontSize`) !== val) {
+                            cmdGroup.addCommand(new SetValueCmd(
+                                obj.getId(), `${fieldPrefix}styleId`, '', SetValueCmd.type.select, rb));
+                        }
+                    } else if (obj instanceof Style) {
+                        obj.addCommandsForChangedProperty(
+                            'fontSize', val, SetValueCmd.type.select, cmdGroup);
+                    }
+                }
+                if (!cmdGroup.isEmpty()) {
+                    rb.executeCommand(cmdGroup);
+                }
+            });
+        elFormField.append(elFontSize);
+        elFormField.append(`<span>${rb.getLabel('styleFontSizeUnit')}</span>`);
+        elFormField.append(`<div id="rbro_${idPrefix}font_error" class="rbroErrorMessage"></div>`);
+        elDiv.append(elFormField);
+        elPanel.append(elDiv);
+
+        elDiv = $(`<div id="rbro_${idPrefix}line_spacing_row" class="rbroFormRow"></div>`);
+        elDiv.append(`<label for="rbro_${idPrefix}line_spacing">
+                      ${rb.getLabel('styleLineSpacing')}:</label>`);
+        elFormField = $('<div class="rbroFormField"></div>');
+        let elLineSpacing = $(`<select id="rbro_${idPrefix}line_spacing">
+                <option value="1">1</option>
+                <option value="1.1">1.1</option>
+                <option value="1.2">1.2</option>
+                <option value="1.3">1.3</option>
+                <option value="1.4">1.4</option>
+                <option value="1.5">1.5</option>
+                <option value="1.6">1.6</option>
+                <option value="1.7">1.7</option>
+                <option value="1.8">1.8</option>
+                <option value="1.9">1.9</option>
+                <option value="2">2</option>
+            </select>`)
+            .change(event => {
+                let val = elLineSpacing.val();
+                let cmdGroup = new CommandGroupCmd('Set value', rb);
+                let selectedObjects = rb.getSelectedObjects();
+                for (let i=selectedObjects.length - 1; i >= 0; i--) {
+                    let obj = selectedObjects[i];
+                    cmdGroup.addSelection(obj.getId());
+                    cmdGroup.addCommand(new SetValueCmd(
+                        obj.getId(), `${fieldPrefix}lineSpacing`, val, SetValueCmd.type.select, rb));
+
+                    if (obj instanceof DocElement && obj.getValue(`${fieldPrefix}styleId`) !== '') {
+                        if (obj.getValue(`${fieldPrefix}lineSpacing`) !== val) {
+                            cmdGroup.addCommand(new SetValueCmd(
+                                obj.getId(), `${fieldPrefix}styleId`, '', SetValueCmd.type.select, rb));
+                        }
+                    } else if (obj instanceof Style) {
+                        obj.addCommandsForChangedProperty(
+                            'lineSpacing', val, SetValueCmd.type.select, cmdGroup);
+                    }
+                if (!cmdGroup.isEmpty()) {
+                    rb.executeCommand(cmdGroup);
+                }
+                }
+            });
+        elFormField.append(elLineSpacing);
+        elDiv.append(elFormField);
+        elPanel.append(elDiv);
+
+        let elBorderDiv = $(`<div id="rbro_${idPrefix}border_div"></div>`);
+        elDiv = $(`<div id="rbro_${idPrefix}border_row" class="rbroFormRow"></div>`);
+        elDiv.append(`<label>${rb.getLabel('styleBorder')}:</label>`);
+        elFormField = $('<div class="rbroFormField"></div>');
+        let elBorderStyle = $(`<div id="rbro_${idPrefix}border"></div>`);
+        let elBorderAll = $(
+            `<button id="rbro_${idPrefix}border_all"
+             class="rbroButton rbroActionButton rbroIcon-border-all"
+             type="button" value="${fieldPrefix}borderAll" title="${rb.getLabel('styleBorderAll')}"></button>`)
+            .click(event => {
+                let val = !elBorderAll.hasClass('rbroButtonActive');
+                let cmdGroup = new CommandGroupCmd('Set value', rb);
+                let selectedObjects = rb.getSelectedObjects();
+                for (let i=selectedObjects.length - 1; i >= 0; i--) {
+                    let obj = selectedObjects[i];
+                    cmdGroup.addSelection(obj.getId());
+                    cmdGroup.addCommand(new SetValueCmd(
+                        obj.getId(), `${fieldPrefix}borderLeft`, val, SetValueCmd.type.button, rb));
+                    cmdGroup.addCommand(new SetValueCmd(
+                        obj.getId(), `${fieldPrefix}borderTop`, val, SetValueCmd.type.button, rb));
+                    cmdGroup.addCommand(new SetValueCmd(
+                        obj.getId(), `${fieldPrefix}borderRight`, val, SetValueCmd.type.button, rb));
+                    cmdGroup.addCommand(new SetValueCmd(
+                        obj.getId(), `${fieldPrefix}borderBottom`, val, SetValueCmd.type.button, rb));
+
+                    if (obj instanceof DocElement && obj.getValue(`${fieldPrefix}styleId`) !== '') {
+                        if (obj.getValue(`${fieldPrefix}borderLeft`) !== val ||
+                                obj.getValue(`${fieldPrefix}borderTop`) !== val ||
+                                obj.getValue(`${fieldPrefix}borderRight`) !== val ||
+                                obj.getValue(`${fieldPrefix}borderBottom`) !== val) {
+                            cmdGroup.addCommand(new SetValueCmd(
+                                obj.getId(), `${fieldPrefix}styleId`, '', SetValueCmd.type.select, rb));
+                        }
+                    } else if (obj instanceof Style) {
+                        obj.addCommandsForChangedProperty(
+                            'borderLeft', val, SetValueCmd.type.button, cmdGroup);
+                        obj.addCommandsForChangedProperty(
+                            'borderTop', val, SetValueCmd.type.button, cmdGroup);
+                        obj.addCommandsForChangedProperty(
+                            'borderRight', val, SetValueCmd.type.button, cmdGroup);
+                        obj.addCommandsForChangedProperty(
+                            'borderBottom', val, SetValueCmd.type.button, cmdGroup);
+                    }
+                }
+                if (!cmdGroup.isEmpty()) {
+                    rb.executeCommand(cmdGroup);
+                }
+            });
+        elBorderStyle.append(elBorderAll);
+        let elBorderLeft = $(
+            `<button id="rbro_${idPrefix}border_left"
+             class="rbroButton rbroActionButton rbroIcon-border-left"
+             type="button" value="${fieldPrefix}borderLeft" title="${rb.getLabel('orientationLeft')}"></button>`)
+            .click(event => {
+                let val = !elBorderLeft.hasClass('rbroButtonActive');
+                let cmdGroup = new CommandGroupCmd('Set value', rb);
+                let selectedObjects = rb.getSelectedObjects();
+                for (let i=selectedObjects.length - 1; i >= 0; i--) {
+                    let obj = selectedObjects[i];
+                    cmdGroup.addSelection(obj.getId());
+                    cmdGroup.addCommand(new SetValueCmd(
+                        obj.getId(), `${fieldPrefix}borderLeft`, val, SetValueCmd.type.button, rb));
+
+                    if (obj instanceof DocElement && obj.getValue(`${fieldPrefix}styleId`) !== '') {
+                        if (obj.getValue(`${fieldPrefix}borderLeft`) !== val) {
+                            cmdGroup.addCommand(new SetValueCmd(
+                                obj.getId(), `${fieldPrefix}styleId`, '', SetValueCmd.type.select, rb));
+                        }
+                    } else if (obj instanceof Style) {
+                        obj.addCommandsForChangedProperty(
+                            'borderLeft', val, SetValueCmd.type.button, cmdGroup);
+                    }
+                }
+                if (!cmdGroup.isEmpty()) {
+                    rb.executeCommand(cmdGroup);
+                }
+            });
+        elBorderStyle.append(elBorderLeft);
+        let elBorderTop = $(
+            `<button id="rbro_${idPrefix}border_top"
+             class="rbroButton rbroActionButton rbroIcon-border-top"
+             type="button" value="${fieldPrefix}borderTop" title="${rb.getLabel('orientationTop')}"></button>`)
+            .click(event => {
+                let val = !elBorderTop.hasClass('rbroButtonActive');
+                let cmdGroup = new CommandGroupCmd('Set value', rb);
+                let selectedObjects = rb.getSelectedObjects();
+                for (let i=selectedObjects.length - 1; i >= 0; i--) {
+                    let obj = selectedObjects[i];
+                    cmdGroup.addSelection(obj.getId());
+                    cmdGroup.addCommand(new SetValueCmd(
+                        obj.getId(), `${fieldPrefix}borderTop`, val, SetValueCmd.type.button, rb));
+
+                    if (obj instanceof DocElement && obj.getValue(`${fieldPrefix}styleId`) !== '') {
+                        if (obj.getValue(`${fieldPrefix}borderTop`) !== val) {
+                            cmdGroup.addCommand(new SetValueCmd(
+                                obj.getId(), `${fieldPrefix}styleId`, '', SetValueCmd.type.select, rb));
+                        }
+                    } else if (obj instanceof Style) {
+                        obj.addCommandsForChangedProperty(
+                            'borderTop', val, SetValueCmd.type.button, cmdGroup);
+                    }
+                }
+                if (!cmdGroup.isEmpty()) {
+                    rb.executeCommand(cmdGroup);
+                }
+            });
+        elBorderStyle.append(elBorderTop);
+        let elBorderRight = $(
+            `<button id="rbro_${idPrefix}border_right"
+             class="rbroButton rbroActionButton rbroIcon-border-right"
+             type="button" value="${fieldPrefix}borderRight" title="${rb.getLabel('orientationRight')}"></button>`)
+            .click(event => {
+                let val = !elBorderRight.hasClass('rbroButtonActive');
+                let cmdGroup = new CommandGroupCmd('Set value', rb);
+                let selectedObjects = rb.getSelectedObjects();
+                for (let i=selectedObjects.length - 1; i >= 0; i--) {
+                    let obj = selectedObjects[i];
+                    cmdGroup.addSelection(obj.getId());
+                    cmdGroup.addCommand(new SetValueCmd(
+                        obj.getId(), `${fieldPrefix}borderRight`, val, SetValueCmd.type.button, rb));
+
+                    if (obj instanceof DocElement && obj.getValue(`${fieldPrefix}styleId`) !== '') {
+                        if (obj.getValue(`${fieldPrefix}borderRight`) !== val) {
+                            cmdGroup.addCommand(new SetValueCmd(
+                                obj.getId(), `${fieldPrefix}styleId`, '', SetValueCmd.type.select, rb));
+                        }
+                    } else if (obj instanceof Style) {
+                        obj.addCommandsForChangedProperty(
+                            'borderRight', val, SetValueCmd.type.button, cmdGroup);
+                    }
+                }
+                if (!cmdGroup.isEmpty()) {
+                    rb.executeCommand(cmdGroup);
+                }
+            });
+        elBorderStyle.append(elBorderRight);
+        let elBorderBottom = $(
+            `<button id="rbro_${idPrefix}border_bottom"
+             class="rbroButton rbroActionButton rbroIcon-border-bottom"
+             type="button" value="${fieldPrefix}borderBottom"
+             title="${rb.getLabel('orientationBottom')}"></button>`)
+            .click(event => {
+                let val = !elBorderBottom.hasClass('rbroButtonActive');
+                let cmdGroup = new CommandGroupCmd('Set value', rb);
+                let selectedObjects = rb.getSelectedObjects();
+                for (let i=selectedObjects.length - 1; i >= 0; i--) {
+                    let obj = selectedObjects[i];
+                    cmdGroup.addSelection(obj.getId());
+                    cmdGroup.addCommand(new SetValueCmd(
+                        obj.getId(), `${fieldPrefix}borderBottom`, val, SetValueCmd.type.button, rb));
+
+                    if (obj instanceof DocElement && obj.getValue(`${fieldPrefix}styleId`) !== '') {
+                        if (obj.getValue(`${fieldPrefix}borderBottom`) !== val) {
+                            cmdGroup.addCommand(new SetValueCmd(
+                                obj.getId(), `${fieldPrefix}styleId`, '', SetValueCmd.type.select, rb));
+                        }
+                    } else if (obj instanceof Style) {
+                        obj.addCommandsForChangedProperty(
+                            'borderBottom', val, SetValueCmd.type.button, cmdGroup);
+                    }
+                }
+                if (!cmdGroup.isEmpty()) {
+                    rb.executeCommand(cmdGroup);
+                }
+            });
+        elBorderStyle.append(elBorderBottom);
+        elFormField.append(elBorderStyle);
+        elDiv.append(elFormField);
+        elBorderDiv.append(elDiv);
+
+        if (renderDocElementMainStyle) {
+            elDiv = $(`<div id="rbro_${idPrefix}table_border_row" class="rbroFormRow"></div>`);
             elDiv.append(`<label>${rb.getLabel('styleBorder')}:</label>`);
             elFormField = $('<div class="rbroFormField"></div>');
-            let elBorderStyle = $(`<div id="rbro_${idPrefix}border"></div>`);
-            let elBorderAll = $(`<button id="rbro_${idPrefix}border_all" class="rbroButton rbroActionButton rbroIcon-border-all"
-                    type="button" value="${fieldPrefix}borderAll"
-                    title="${rb.getLabel('styleBorderAll')}"></button>`)
+            let elBorder = $(`<div id="rbro_${idPrefix}table_border"></div>`);
+            let elBorderGrid = $(
+                `<button id="rbro_${idPrefix}table_border_grid"
+                 class="rbroButton rbroActionButton rbroIcon-border-table-grid"
+                 type="button" value="${fieldPrefix}grid"
+                 title="${rb.getLabel('docElementBorderGrid')}"></button>`)
                 .click(event => {
-                    if (rb.getDataObject(panel.getSelectedObjId()) !== null) {
-                        let cmd = new SetValueCmd(panel.getSelectedObjId(), `rbro_${idPrefix}border_all`,
-                            `${fieldPrefix}borderAll`, !elBorderAll.hasClass('rbroButtonActive'),
-                            SetValueCmd.type.button, rb);
-                        rb.executeCommand(cmd);
+                    let val = TableElement.border.grid;
+                    let selectedObjects = rb.getSelectedObjects();
+                    let valueChanged = false;
+                    for (let i=selectedObjects.length - 1; i >= 0; i--) {
+                        if (selectedObjects[i].getValue(`${fieldPrefix}border`) !== val) {
+                            valueChanged = true;
+                            break;
+                        }
+                    }
+
+                    if (valueChanged) {
+                        let cmdGroup = new CommandGroupCmd('Set value', rb);
+                        for (let i = selectedObjects.length - 1; i >= 0; i--) {
+                            let obj = selectedObjects[i];
+                            cmdGroup.addSelection(obj.getId());
+                            cmdGroup.addCommand(new SetValueCmd(
+                                obj.getId(), `${fieldPrefix}border`, val,
+                                SetValueCmd.type.buttonGroup, rb));
+                        }
+                        if (!cmdGroup.isEmpty()) {
+                            rb.executeCommand(cmdGroup);
+                        }
                     }
                 });
-            elBorderStyle.append(elBorderAll);
-            let elBorderLeft = $(`<button id="rbro_${idPrefix}border_left" class="rbroButton rbroActionButton rbroIcon-border-left"
-                    type="button" value="${fieldPrefix}borderLeft"
-                    title="${rb.getLabel('orientationLeft')}"></button>`)
+            elBorder.append(elBorderGrid);
+            let elBorderFrameRow = $(
+                `<button id="rbro_${idPrefix}table_border_frame_row"
+                 class="rbroButton rbroActionButton rbroIcon-border-table-frame-row"
+                 type="button" value="${fieldPrefix}frame_row"
+                 title="${rb.getLabel('docElementBorderFrameRow')}"></button>`)
                 .click(event => {
-                    if (rb.getDataObject(panel.getSelectedObjId()) !== null) {
-                        let cmd = new SetValueCmd(panel.getSelectedObjId(), `rbro_${idPrefix}border_left`,
-                            `${fieldPrefix}borderLeft`, !elBorderLeft.hasClass('rbroButtonActive'),
-                            SetValueCmd.type.button, rb);
-                        rb.executeCommand(cmd);
+                    let val = TableElement.border.frameRow;
+                    let selectedObjects = rb.getSelectedObjects();
+                    let valueChanged = false;
+                    for (let i=selectedObjects.length - 1; i >= 0; i--) {
+                        if (selectedObjects[i].getValue(`${fieldPrefix}border`) !== val) {
+                            valueChanged = true;
+                            break;
+                        }
+                    }
+
+                    if (valueChanged) {
+                        let cmdGroup = new CommandGroupCmd('Set value', rb);
+                        for (let i = selectedObjects.length - 1; i >= 0; i--) {
+                            let obj = selectedObjects[i];
+                            cmdGroup.addSelection(obj.getId());
+                            cmdGroup.addCommand(new SetValueCmd(
+                                obj.getId(), `${fieldPrefix}border`, val,
+                                SetValueCmd.type.buttonGroup, rb));
+                        }
+                        if (!cmdGroup.isEmpty()) {
+                            rb.executeCommand(cmdGroup);
+                        }
                     }
                 });
-            elBorderStyle.append(elBorderLeft);
-            let elBorderTop = $(`<button id="rbro_${idPrefix}border_top" class="rbroButton rbroActionButton rbroIcon-border-top"
-                    type="button" value="${fieldPrefix}borderTop"
-                    title="${rb.getLabel('orientationTop')}"></button>`)
+            elBorder.append(elBorderFrameRow);
+            let elBorderFrame = $(
+                `<button id="rbro_${idPrefix}table_border_frame"
+                 class="rbroButton rbroActionButton rbroIcon-border-table-frame"
+                 type="button" value="${fieldPrefix}frame"
+                 title="${rb.getLabel('docElementBorderFrame')}"></button>`)
                 .click(event => {
-                    if (rb.getDataObject(panel.getSelectedObjId()) !== null) {
-                        let cmd = new SetValueCmd(panel.getSelectedObjId(), `rbro_${idPrefix}border_top`,
-                            `${fieldPrefix}borderTop`, !elBorderTop.hasClass('rbroButtonActive'),
-                            SetValueCmd.type.button, rb);
-                        rb.executeCommand(cmd);
+                    let val = TableElement.border.frame;
+                    let selectedObjects = rb.getSelectedObjects();
+                    let valueChanged = false;
+                    for (let i=selectedObjects.length - 1; i >= 0; i--) {
+                        if (selectedObjects[i].getValue(`${fieldPrefix}border`) !== val) {
+                            valueChanged = true;
+                            break;
+                        }
+                    }
+
+                    if (valueChanged) {
+                        let cmdGroup = new CommandGroupCmd('Set value', rb);
+                        for (let i = selectedObjects.length - 1; i >= 0; i--) {
+                            let obj = selectedObjects[i];
+                            cmdGroup.addSelection(obj.getId());
+                            cmdGroup.addCommand(new SetValueCmd(
+                                obj.getId(), `${fieldPrefix}border`, val,
+                                SetValueCmd.type.buttonGroup, rb));
+                        }
+                        if (!cmdGroup.isEmpty()) {
+                            rb.executeCommand(cmdGroup);
+                        }
                     }
                 });
-            elBorderStyle.append(elBorderTop);
-            let elBorderRight = $(`<button id="rbro_${idPrefix}border_right" class="rbroButton rbroActionButton rbroIcon-border-right"
-                    type="button" value="${fieldPrefix}borderRight"
-                    title="${rb.getLabel('orientationRight')}"></button>`)
+            elBorder.append(elBorderFrame);
+            let elBorderRow = $(
+                `<button id="rbro_${idPrefix}table_border_row"
+                 class="rbroButton rbroActionButton rbroIcon-border-table-row"
+                 type="button" value="${fieldPrefix}row"
+                 title="${rb.getLabel('docElementBorderRow')}"></button>`)
                 .click(event => {
-                    if (rb.getDataObject(panel.getSelectedObjId()) !== null) {
-                        let cmd = new SetValueCmd(panel.getSelectedObjId(), `rbro_${idPrefix}border_right`,
-                            `${fieldPrefix}borderRight`, !elBorderRight.hasClass('rbroButtonActive'),
-                            SetValueCmd.type.button, rb);
-                        rb.executeCommand(cmd);
+                    let val = TableElement.border.row;
+                    let selectedObjects = rb.getSelectedObjects();
+                    let valueChanged = false;
+                    for (let i=selectedObjects.length - 1; i >= 0; i--) {
+                        if (selectedObjects[i].getValue(`${fieldPrefix}border`) !== val) {
+                            valueChanged = true;
+                            break;
+                        }
+                    }
+
+                    if (valueChanged) {
+                        let cmdGroup = new CommandGroupCmd('Set value', rb);
+                        for (let i = selectedObjects.length - 1; i >= 0; i--) {
+                            let obj = selectedObjects[i];
+                            cmdGroup.addSelection(obj.getId());
+                            cmdGroup.addCommand(new SetValueCmd(
+                                obj.getId(), `${fieldPrefix}border`, val,
+                                SetValueCmd.type.buttonGroup, rb));
+                        }
+                        if (!cmdGroup.isEmpty()) {
+                            rb.executeCommand(cmdGroup);
+                        }
                     }
                 });
-            elBorderStyle.append(elBorderRight);
-            let elBorderBottom = $(`<button id="rbro_${idPrefix}border_bottom" class="rbroButton rbroActionButton rbroIcon-border-bottom"
-                    type="button" value="${fieldPrefix}borderBottom"
-                    title="${rb.getLabel('orientationBottom')}"></button>`)
+            elBorder.append(elBorderRow);
+            let elBorderNone = $(
+                `<button id="rbro_${idPrefix}table_border_none"
+                 class="rbroButton rbroActionButton rbroIcon-border-table-none"
+                 type="button" value="${fieldPrefix}none"
+                 title="${rb.getLabel('docElementBorderNone')}"></button>`)
                 .click(event => {
-                    if (rb.getDataObject(panel.getSelectedObjId()) !== null) {
-                        let cmd = new SetValueCmd(panel.getSelectedObjId(), `rbro_${idPrefix}border_bottom`,
-                            `${fieldPrefix}borderBottom`, !elBorderBottom.hasClass('rbroButtonActive'),
-                            SetValueCmd.type.button, rb);
-                        rb.executeCommand(cmd);
+                    let val = TableElement.border.none;
+                    let selectedObjects = rb.getSelectedObjects();
+                    let valueChanged = false;
+                    for (let i=selectedObjects.length - 1; i >= 0; i--) {
+                        if (selectedObjects[i].getValue(`${fieldPrefix}border`) !== val) {
+                            valueChanged = true;
+                            break;
+                        }
+                    }
+
+                    if (valueChanged) {
+                        let cmdGroup = new CommandGroupCmd('Set value', rb);
+                        for (let i = selectedObjects.length - 1; i >= 0; i--) {
+                            let obj = selectedObjects[i];
+                            cmdGroup.addSelection(obj.getId());
+                            cmdGroup.addCommand(new SetValueCmd(
+                                obj.getId(), `${fieldPrefix}border`, val,
+                                SetValueCmd.type.buttonGroup, rb));
+                        }
+                        if (!cmdGroup.isEmpty()) {
+                            rb.executeCommand(cmdGroup);
+                        }
                     }
                 });
-            elBorderStyle.append(elBorderBottom);
-            elFormField.append(elBorderStyle);
+            elBorder.append(elBorderNone);
+            elFormField.append(elBorder);
             elDiv.append(elFormField);
             elBorderDiv.append(elDiv);
-
-            elDiv = $('<div class="rbroFormRow"></div>');
-            elDiv.append(`<label for="rbro_${idPrefix}border_color">${rb.getLabel('styleBorderColor')}:</label>`);
-            elFormField = $('<div class="rbroFormField"></div>');
-            let elBorderColorContainer = $('<div class="rbroColorPickerContainer"></div>');
-            let elBorderColor = $(`<input id="rbro_${idPrefix}border_color">`)
-                .change(event => {
-                    if (rb.getDataObject(panel.getSelectedObjId()) !== null) {
-                        let cmd = new SetValueCmd(panel.getSelectedObjId(), `rbro_${idPrefix}border_color`,
-                            `${fieldPrefix}borderColor`, elBorderColor.val(), SetValueCmd.type.color, rb);
-                        rb.executeCommand(cmd);
-                    }
-                });
-            elBorderColorContainer.append(elBorderColor);
-            elFormField.append(elBorderColorContainer);
-            elDiv.append(elFormField);
-            elBorderDiv.append(elDiv);
-            utils.initColorPicker(elBorderColor, rb);
-
-            elDiv = $('<div class="rbroFormRow"></div>');
-            elDiv.append(`<label for="rbro_${idPrefix}border_width">${rb.getLabel('styleBorderWidth')}:</label>`);
-            elFormField = $('<div class="rbroFormField"></div>');
-            let elBorderWidth = $(`<input id="rbro_${idPrefix}border_width">`)
-                .on('input', event => {
-                    if (rb.getDataObject(panel.getSelectedObjId()) !== null) {
-                        let cmd = new SetValueCmd(panel.getSelectedObjId(), `rbro_${idPrefix}border_width`,
-                            `${fieldPrefix}borderWidth`, elBorderWidth.val(), SetValueCmd.type.text, rb);
-                        rb.executeCommand(cmd);
-                    }
-                });
-            elFormField.append(elBorderWidth);
-            elDiv.append(elFormField);
-            elBorderDiv.append(elDiv);
-            utils.setInputDecimal(elBorderWidth);
-            elPanel.append(elBorderDiv);
-
-            StylePanel.renderPaddingControls(elPanel, idPrefix, fieldPrefix, panel, rb);
         }
+
+        elDiv = $(`<div id="rbro_${idPrefix}border_color_row" class="rbroFormRow"></div>`);
+        elDiv.append(`<label for="rbro_${idPrefix}border_color">
+                      ${rb.getLabel('styleBorderColor')}:</label>`);
+        elFormField = $('<div class="rbroFormField"></div>');
+        let elBorderColorContainer = $('<div class="rbroColorPickerContainer"></div>');
+        let elBorderColor = $(`<input id="rbro_${idPrefix}border_color">`)
+            .change(event => {
+                let val = elBorderColor.val();
+                if (utils.isValidColor(val)) {
+                    let cmdGroup = new CommandGroupCmd('Set value', rb);
+                    let selectedObjects = rb.getSelectedObjects();
+                    for (let i=selectedObjects.length - 1; i >= 0; i--) {
+                        let obj = selectedObjects[i];
+                        cmdGroup.addSelection(obj.getId());
+                        cmdGroup.addCommand(new SetValueCmd(
+                            obj.getId(), `${fieldPrefix}borderColor`, val,
+                            SetValueCmd.type.color, rb));
+
+                        if (obj instanceof DocElement && obj.getValue(`${fieldPrefix}styleId`) !== '') {
+                            if (obj.getValue(`${fieldPrefix}borderColor`) !== val) {
+                                cmdGroup.addCommand(new SetValueCmd(
+                                    obj.getId(), `${fieldPrefix}styleId`, '', SetValueCmd.type.select, rb));
+                            }
+                        } else if (obj instanceof Style) {
+                            obj.addCommandsForChangedProperty(
+                                'borderColor', val, SetValueCmd.type.color, cmdGroup);
+                        }
+                    }
+                    if (!cmdGroup.isEmpty()) {
+                        rb.executeCommand(cmdGroup);
+                    }
+                }
+            });
+        elBorderColorContainer.append(elBorderColor);
+        elFormField.append(elBorderColorContainer);
+        elDiv.append(elFormField);
+        elBorderDiv.append(elDiv);
+        utils.initColorPicker(elBorderColor, rb);
+
+        elDiv = $(`<div id="rbro_${idPrefix}border_width_row" class="rbroFormRow"></div>`);
+        elDiv.append(
+            `<label for="rbro_${idPrefix}border_width">${rb.getLabel('styleBorderWidth')}:</label>`);
+        elFormField = $('<div class="rbroFormField"></div>');
+        let elBorderWidth = $(`<input id="rbro_${idPrefix}border_width" type="number" step="0.5">`)
+            .on('input', event => {
+                let val = elBorderWidth.val();
+                if (val !== '') {
+                    val = utils.checkInputDecimal(val, 0.5, 99);
+                }
+                if (val !== elBorderWidth.val()) {
+                    elBorderWidth.val(val);
+                }
+                let selectedObjects = rb.getSelectedObjects();
+                let valueChanged = false;
+                for (let i=selectedObjects.length - 1; i >= 0; i--) {
+                    if (selectedObjects[i].getValue(`${fieldPrefix}borderWidth`) !== val) {
+                        valueChanged = true;
+                        break;
+                    }
+                }
+
+                if (valueChanged) {
+                    let cmdGroup = new CommandGroupCmd('Set value', rb);
+                    for (let i=selectedObjects.length - 1; i >= 0; i--) {
+                        let obj = selectedObjects[i];
+                        cmdGroup.addSelection(obj.getId());
+                        cmdGroup.addCommand(new SetValueCmd(
+                            obj.getId(), `${fieldPrefix}borderWidth`, val,
+                            SetValueCmd.type.text, rb));
+
+                        if (obj instanceof DocElement && obj.getValue(`${fieldPrefix}styleId`) !== '') {
+                            if (obj.getValue(`${fieldPrefix}borderWidth`) !== val) {
+                                cmdGroup.addCommand(new SetValueCmd(
+                                    obj.getId(), `${fieldPrefix}styleId`, '', SetValueCmd.type.select, rb));
+                            }
+                        } else if (obj instanceof Style) {
+                            obj.addCommandsForChangedProperty(
+                                'borderWidth', val, SetValueCmd.type.text, cmdGroup);
+                        }
+                    }
+                    if (!cmdGroup.isEmpty()) {
+                        rb.executeCommand(cmdGroup);
+                    }
+                }
+            });
+        elFormField.append(elBorderWidth);
+        elDiv.append(elFormField);
+        elBorderDiv.append(elDiv);
+        elPanel.append(elBorderDiv);
+
+
+        elDiv = $(`<div id="rbro_${idPrefix}padding_row" class="rbroFormRow"></div>`);
+        elDiv.append(`<label for="rbro_${idPrefix}padding">${rb.getLabel('stylePadding')}:</label>`);
+        elFormField = $('<div class="rbroFormField rbroSmallInput"></div>');
+
+        let elPaddingTopDiv = $('<div class="rbroColumnCenter"></div>');
+        let elPaddingTop = $(
+            `<input id="rbro_${idPrefix}padding_top"
+             placeholder="${rb.getLabel('orientationTop')}" type="number">`)
+            .on('input', event => {
+                let val = elPaddingTop.val();
+                let cmdGroup = new CommandGroupCmd('Set value', rb);
+                let selectedObjects = rb.getSelectedObjects();
+                for (let i=selectedObjects.length - 1; i >= 0; i--) {
+                    let obj = selectedObjects[i];
+                    cmdGroup.addSelection(obj.getId());
+                    cmdGroup.addCommand(new SetValueCmd(
+                        obj.getId(), `${fieldPrefix}paddingTop`, val, SetValueCmd.type.text, rb));
+
+                    if (obj instanceof DocElement && obj.getValue(`${fieldPrefix}styleId`) !== '') {
+                        if (obj.getValue(`${fieldPrefix}paddingTop`) !== val) {
+                            cmdGroup.addCommand(new SetValueCmd(
+                                obj.getId(), `${fieldPrefix}styleId`, '', SetValueCmd.type.select, rb));
+                        }
+                    } else if (obj instanceof Style) {
+                        obj.addCommandsForChangedProperty(
+                            'paddingTop', val, SetValueCmd.type.text, cmdGroup);
+                    }
+                }
+                if (!cmdGroup.isEmpty()) {
+                    rb.executeCommand(cmdGroup);
+                }
+            });
+        elPaddingTopDiv.append(elPaddingTop);
+        elFormField.append(elPaddingTopDiv);
+
+        let elDiv2 = $('<div class="rbroSplit"></div>');
+        let elPaddingLeft = $(
+            `<input id="rbro_${idPrefix}padding_left"
+             placeholder="${rb.getLabel('orientationLeft')}" type="number">`)
+            .on('input', event => {
+                let val = elPaddingLeft.val();
+                let cmdGroup = new CommandGroupCmd('Set value', rb);
+                let selectedObjects = rb.getSelectedObjects();
+                for (let i=selectedObjects.length - 1; i >= 0; i--) {
+                    let obj = selectedObjects[i];
+                    cmdGroup.addSelection(obj.getId());
+                    cmdGroup.addCommand(new SetValueCmd(
+                        obj.getId(), `${fieldPrefix}paddingLeft`, val, SetValueCmd.type.text, rb));
+
+                    if (obj instanceof DocElement && obj.getValue(`${fieldPrefix}styleId`) !== '') {
+                        if (obj.getValue(`${fieldPrefix}paddingLeft`) !== val) {
+                            cmdGroup.addCommand(new SetValueCmd(
+                                obj.getId(), `${fieldPrefix}styleId`, '', SetValueCmd.type.select, rb));
+                        }
+                    } else if (obj instanceof Style) {
+                        obj.addCommandsForChangedProperty(
+                            'paddingLeft', val, SetValueCmd.type.text, cmdGroup);
+                    }
+                }
+                if (!cmdGroup.isEmpty()) {
+                    rb.executeCommand(cmdGroup);
+                }
+            });
+        elDiv2.append(elPaddingLeft);
+        let elPaddingRight = $(
+            `<input id="rbro_${idPrefix}padding_right"
+             placeholder="${rb.getLabel('orientationRight')}" type="number">`)
+            .on('input', event => {
+                let val = elPaddingRight.val();
+                let cmdGroup = new CommandGroupCmd('Set value', rb);
+                let selectedObjects = rb.getSelectedObjects();
+                for (let i=selectedObjects.length - 1; i >= 0; i--) {
+                    let obj = selectedObjects[i];
+                    cmdGroup.addSelection(obj.getId());
+                    cmdGroup.addCommand(new SetValueCmd(
+                        obj.getId(), `${fieldPrefix}paddingRight`, val, SetValueCmd.type.text, rb));
+
+                    if (obj instanceof DocElement && obj.getValue(`${fieldPrefix}styleId`) !== '') {
+                        if (obj.getValue(`${fieldPrefix}paddingRight`) !== val) {
+                            cmdGroup.addCommand(new SetValueCmd(
+                                obj.getId(), `${fieldPrefix}styleId`, '', SetValueCmd.type.select, rb));
+                        }
+                    } else if (obj instanceof Style) {
+                        obj.addCommandsForChangedProperty(
+                            'paddingRight', val, SetValueCmd.type.text, cmdGroup);
+                    }
+                }
+                if (!cmdGroup.isEmpty()) {
+                    rb.executeCommand(cmdGroup);
+                }
+            });
+        elDiv2.append(elPaddingRight);
+        elFormField.append(elDiv2);
+
+        let elPaddingBottomDiv = $('<div class="rbroColumnCenter"></div>');
+        let elPaddingBottom = $(
+            `<input id="rbro_${idPrefix}padding_bottom"
+             placeholder="${rb.getLabel('orientationBottom')}" type="number">`)
+            .on('input', event => {
+                let val = elPaddingBottom.val();
+                let cmdGroup = new CommandGroupCmd('Set value', rb);
+                let selectedObjects = rb.getSelectedObjects();
+                for (let i=selectedObjects.length - 1; i >= 0; i--) {
+                    let obj = selectedObjects[i];
+                    cmdGroup.addSelection(obj.getId());
+                    cmdGroup.addCommand(new SetValueCmd(
+                        obj.getId(), `${fieldPrefix}paddingBottom`, val, SetValueCmd.type.text, rb));
+
+                    if (obj instanceof DocElement && obj.getValue(`${fieldPrefix}styleId`) !== '') {
+                        if (obj.getValue(`${fieldPrefix}paddingBottom`) !== val) {
+                            cmdGroup.addCommand(new SetValueCmd(
+                                obj.getId(), `${fieldPrefix}styleId`, '', SetValueCmd.type.select, rb));
+                        }
+                    } else if (obj instanceof Style) {
+                        obj.addCommandsForChangedProperty(
+                            'paddingBottom', val, SetValueCmd.type.text, cmdGroup);
+                    }
+                }
+                if (!cmdGroup.isEmpty()) {
+                    rb.executeCommand(cmdGroup);
+                }
+            });
+        elPaddingBottomDiv.append(elPaddingBottom);
+        elFormField.append(elPaddingBottomDiv);
+        elDiv.append(elFormField);
+        elPanel.append(elDiv);
     }
 
-    show(data) {
-        $('#rbro_style_panel').removeClass('rbroHidden');
-        this.updateData(data);
+    destroy() {
+        StylePanel.destroyStyle('style_');
     }
 
-    hide() {
-        $('#rbro_style_panel').addClass('rbroHidden');
+    static destroyStyle(idPrefix) {
+        $(`#rbro_${idPrefix}text_color`).spectrum('destroy');
+        $(`#rbro_${idPrefix}background_color`).spectrum('destroy');
+        $(`#rbro_${idPrefix}alternate_background_color`).spectrum('destroy');
+        $(`#rbro_${idPrefix}border_color`).spectrum('destroy');
     }
 
     /**
-     * Is called when the selected element was changed.
+     * Is called when the selection is changed or the selected element was changed.
      * The panel is updated to show the values of the selected data object.
-     * @param {Style} data
+     * @param {String} [field] - affected field in case of change operation.
      */
-    updateData(data) {
-        if (data !== null) {
-            $('#rbro_style_name').prop('disabled', false);
-            this.selectedObjId = data.getId();
-        } else {
-            $('#rbro_style_name').prop('disabled', true);
-        }
-        StylePanel.updateStyleData(data, 'style_', '', DocElement.type.none);
-        this.updateErrors();
-    }
+    updateDisplay(field) {
+        let selectedObject = this.rb.getSelectedObject();
 
-    static updateStyleData(data, idPrefix, fieldPrefix, elementType) {
-        if (data !== null) {
-            $(`#rbro_${idPrefix}halignment_left`).prop('disabled', false);
-            $(`#rbro_${idPrefix}halignment_center`).prop('disabled', false);
-            $(`#rbro_${idPrefix}halignment_right`).prop('disabled', false);
-            $(`#rbro_${idPrefix}valignment_top`).prop('disabled', false);
-            $(`#rbro_${idPrefix}valignment_middle`).prop('disabled', false);
-            $(`#rbro_${idPrefix}valignment_bottom`).prop('disabled', false);
-            $(`#rbro_${idPrefix}background_color`).spectrum('enable');
-            $(`#rbro_${idPrefix}border_all`).prop('disabled', false);
-            $(`#rbro_${idPrefix}border_left`).prop('disabled', false);
-            $(`#rbro_${idPrefix}border_top`).prop('disabled', false);
-            $(`#rbro_${idPrefix}border_right`).prop('disabled', false);
-            $(`#rbro_${idPrefix}border_bottom`).prop('disabled', false);
-            $(`#rbro_${idPrefix}border_color`).spectrum('enable');
-            $(`#rbro_${idPrefix}border_width`).prop('disabled', false);
-            if (elementType === DocElement.type.none) {
-                $(`#rbro_${idPrefix}name`).prop('disabled', false);
-            }
-            if (elementType === DocElement.type.none || elementType === DocElement.type.text) {
-                $(`#rbro_${idPrefix}bold`).prop('disabled', false);
-                $(`#rbro_${idPrefix}italic`).prop('disabled', false);
-                $(`#rbro_${idPrefix}underline`).prop('disabled', false);
-                $(`#rbro_${idPrefix}strikethrough`).prop('disabled', false);
-                $(`#rbro_${idPrefix}halignment_justify`).prop('disabled', false);
-                $(`#rbro_${idPrefix}text_color`).spectrum('enable');
-                $(`#rbro_${idPrefix}font`).prop('disabled', false);
-                $(`#rbro_${idPrefix}font_size`).prop('disabled', false);
-                $(`#rbro_${idPrefix}line_spacing`).prop('disabled', false);
-                $(`#rbro_${idPrefix}padding_top`).prop('disabled', false);
-                $(`#rbro_${idPrefix}padding_left`).prop('disabled', false);
-                $(`#rbro_${idPrefix}padding_right`).prop('disabled', false);
-                $(`#rbro_${idPrefix}padding_bottom`).prop('disabled', false);
-            }
-
-            $(`#rbro_${idPrefix}halignment_left`).parent().find('button').removeClass('rbroButtonActive');
-            let horizontalAlignment = data.getValue(`${fieldPrefix}horizontalAlignment`);
-            if (horizontalAlignment === Style.alignment.left) {
-                $(`#rbro_${idPrefix}halignment_left`).addClass('rbroButtonActive');
-            }
-            else if (horizontalAlignment === Style.alignment.center) {
-                $(`#rbro_${idPrefix}halignment_center`).addClass('rbroButtonActive');
-            }
-            else if (horizontalAlignment === Style.alignment.right) {
-                $(`#rbro_${idPrefix}halignment_right`).addClass('rbroButtonActive');
-            }
-            else if (horizontalAlignment === Style.alignment.justify) {
-                $(`#rbro_${idPrefix}halignment_justify`).addClass('rbroButtonActive');
-            }
-            $(`#rbro_${idPrefix}valignment_top`).parent().find('button').removeClass('rbroButtonActive');
-            let verticalAlignment = data.getValue(`${fieldPrefix}verticalAlignment`);
-            if (verticalAlignment == Style.alignment.top) {
-                $(`#rbro_${idPrefix}valignment_top`).addClass('rbroButtonActive');
-            }
-            else if (verticalAlignment === Style.alignment.middle) {
-                $(`#rbro_${idPrefix}valignment_middle`).addClass('rbroButtonActive');
-            }
-            else if (verticalAlignment === Style.alignment.bottom) {
-                $(`#rbro_${idPrefix}valignment_bottom`).addClass('rbroButtonActive');
-            }
-
-            if (elementType === DocElement.type.none || elementType === DocElement.type.text || elementType === DocElement.type.image) {
-                $(`#rbro_${idPrefix}background_color`).spectrum("set", data.getValue(`${fieldPrefix}backgroundColor`));
-                if (data.getValue(`${fieldPrefix}borderAll`)) {
-                    $(`#rbro_${idPrefix}border_all`).addClass('rbroButtonActive');
-                } else {
-                    $(`#rbro_${idPrefix}border_all`).removeClass('rbroButtonActive');
+        if (selectedObject !== null && selectedObject instanceof Style) {
+            for (let property in this.propertyDescriptors) {
+                if (this.propertyDescriptors.hasOwnProperty(property) && (field === null || property === field)) {
+                    let propertyDescriptor = this.propertyDescriptors[property];
+                    let value = selectedObject.getValue(property);
+                    super.setValue(propertyDescriptor, value, false);
                 }
-                if (data.getValue(`${fieldPrefix}borderLeft`)) {
-                    $(`#rbro_${idPrefix}border_left`).addClass('rbroButtonActive');
-                } else {
-                    $(`#rbro_${idPrefix}border_left`).removeClass('rbroButtonActive');
-                }
-                if (data.getValue(`${fieldPrefix}borderTop`)) {
-                    $(`#rbro_${idPrefix}border_top`).addClass('rbroButtonActive');
-                } else {
-                    $(`#rbro_${idPrefix}border_top`).removeClass('rbroButtonActive');
-                }
-                if (data.getValue(`${fieldPrefix}borderRight`)) {
-                    $(`#rbro_${idPrefix}border_right`).addClass('rbroButtonActive');
-                } else {
-                    $(`#rbro_${idPrefix}border_right`).removeClass('rbroButtonActive');
-                }
-                if (data.getValue(`${fieldPrefix}borderBottom`)) {
-                    $(`#rbro_${idPrefix}border_bottom`).addClass('rbroButtonActive');
-                } else {
-                    $(`#rbro_${idPrefix}border_bottom`).removeClass('rbroButtonActive');
-                }
-                $(`#rbro_${idPrefix}border_color`).spectrum("set", data.getValue(`${fieldPrefix}borderColor`));
-                $(`#rbro_${idPrefix}border_width`).val(data.getValue(`${fieldPrefix}borderWidth`));
-            }
-
-            if (elementType === DocElement.type.none) {
-                $(`#rbro_${idPrefix}name`).val(data.getName());
-            }
-            if (elementType === DocElement.type.none || elementType === DocElement.type.text) {
-                if (data.getValue(`${fieldPrefix}bold`)) {
-                    $(`#rbro_${idPrefix}bold`).addClass('rbroButtonActive');
-                } else {
-                    $(`#rbro_${idPrefix}bold`).removeClass('rbroButtonActive');
-                }
-                if (data.getValue(`${fieldPrefix}italic`)) {
-                    $(`#rbro_${idPrefix}italic`).addClass('rbroButtonActive');
-                } else {
-                    $(`#rbro_${idPrefix}italic`).removeClass('rbroButtonActive');
-                }
-                if (data.getValue(`${fieldPrefix}underline`)) {
-                    $(`#rbro_${idPrefix}underline`).addClass('rbroButtonActive');
-                } else {
-                    $(`#rbro_${idPrefix}underline`).removeClass('rbroButtonActive');
-                }
-                if (data.getValue(`${fieldPrefix}strikethrough`)) {
-                    $(`#rbro_${idPrefix}strikethrough`).addClass('rbroButtonActive');
-                } else {
-                    $(`#rbro_${idPrefix}strikethrough`).removeClass('rbroButtonActive');
-                }
-                $(`#rbro_${idPrefix}text_color`).spectrum("set", data.getValue(`${fieldPrefix}textColor`));
-                $(`#rbro_${idPrefix}font`).val(data.getValue(`${fieldPrefix}font`));
-                $(`#rbro_${idPrefix}font_size`).val(data.getValue(`${fieldPrefix}fontSize`));
-                $(`#rbro_${idPrefix}line_spacing`).val(data.getValue(`${fieldPrefix}lineSpacing`));
-                $(`#rbro_${idPrefix}padding_top`).val(data.getValue(`${fieldPrefix}paddingTop`));
-                $(`#rbro_${idPrefix}padding_left`).val(data.getValue(`${fieldPrefix}paddingLeft`));
-                $(`#rbro_${idPrefix}padding_right`).val(data.getValue(`${fieldPrefix}paddingRight`));
-                $(`#rbro_${idPrefix}padding_bottom`).val(data.getValue(`${fieldPrefix}paddingBottom`));
-            }
-        } else {
-            $(`#rbro_${idPrefix}halignment_left`).prop('disabled', true);
-            $(`#rbro_${idPrefix}halignment_center`).prop('disabled', true);
-            $(`#rbro_${idPrefix}halignment_right`).prop('disabled', true);
-            $(`#rbro_${idPrefix}valignment_top`).prop('disabled', true);
-            $(`#rbro_${idPrefix}valignment_middle`).prop('disabled', true);
-            $(`#rbro_${idPrefix}valignment_bottom`).prop('disabled', true);
-            $(`#rbro_${idPrefix}background_color`).spectrum('disable');
-            if (elementType === DocElement.type.none || elementType === DocElement.type.text || elementType === DocElement.type.image) {
-                $(`#rbro_${idPrefix}border_left`).prop('disabled', true);
-                $(`#rbro_${idPrefix}border_top`).prop('disabled', true);
-                $(`#rbro_${idPrefix}border_right`).prop('disabled', true);
-                $(`#rbro_${idPrefix}border_bottom`).prop('disabled', true);
-                $(`#rbro_${idPrefix}border_color`).spectrum('disable');
-                $(`#rbro_${idPrefix}border_width`).prop('disabled', true);
-            }
-
-            if (elementType === DocElement.type.none) {
-                $(`#rbro_${idPrefix}name`).prop('disabled', true);
-            }
-            if (elementType === DocElement.type.none || elementType === DocElement.type.text) {
-                $(`#rbro_${idPrefix}bold`).prop('disabled', true);
-                $(`#rbro_${idPrefix}italic`).prop('disabled', true);
-                $(`#rbro_${idPrefix}underline`).prop('disabled', true);
-                $(`#rbro_${idPrefix}strikethrough`).prop('disabled', true);
-                $(`#rbro_${idPrefix}halignment_justify`).prop('disabled', true);
-                $(`#rbro_${idPrefix}text_color`).spectrum('disable');
-                $(`#rbro_${idPrefix}font`).prop('disabled', true);
-                $(`#rbro_${idPrefix}font_size`).prop('disabled', true);
-                $(`#rbro_${idPrefix}line_spacing`).prop('disabled', true);
-                $(`#rbro_${idPrefix}padding_top`).prop('disabled', true);
-                $(`#rbro_${idPrefix}padding_left`).prop('disabled', true);
-                $(`#rbro_${idPrefix}padding_right`).prop('disabled', true);
-                $(`#rbro_${idPrefix}padding_bottom`).prop('disabled', true);
             }
         }
-    }
-
-    /**
-     * Is called when a data object was modified (including new and deleted data objects).
-     * @param {*} obj - new/deleted/modified data object.
-     * @param {String} operation - operation which caused the notification.
-     */
-    notifyEvent(obj, operation) {
-    }
-
-    /**
-     * Updates displayed errors of currently selected data object.
-     */
-    updateErrors() {
-        $('#rbro_style_panel .rbroFormRow').removeClass('rbroError');
-        $('#rbro_style_panel .rbroErrorMessage').text('');
-        let selectedObj = this.rb.getDataObject(this.selectedObjId);
-        if (selectedObj !== null) {
-            for (let error of selectedObj.getErrors()) {
-            }
-        }
-    }
-
-    getSelectedObjId() {
-        return this.selectedObjId;
     }
 }

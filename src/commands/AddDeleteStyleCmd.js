@@ -6,8 +6,9 @@ import MainPanelItem from '../menu/MainPanelItem';
  * Command to add and delete a style.
  * @class
  */
-export default class AddDeleteStyleCmd {
+export default class AddDeleteStyleCmd extends Command {
     constructor(add, initialData, id, parentId, position, rb) {
+        super();
         this.add = add;
         this.initialData = initialData;
         this.parentId = parentId;
@@ -57,7 +58,16 @@ export default class AddDeleteStyleCmd {
         if (style !== null) {
             this.initialData = style.toJS();
             this.rb.deleteStyle(style);
-            style.getPanelItem().getParent().removeChild(style.getPanelItem());
         }
+    }
+
+    /**
+     * Returns class name.
+     * This can be useful for introspection when the class names are mangled
+     * due to the webpack uglification process.
+     * @returns {string}
+     */
+    getClassName() {
+        return 'AddDeleteStyleCmd';
     }
 }

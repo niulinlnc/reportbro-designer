@@ -18,19 +18,19 @@ export default class LineElement extends DocElement {
         this.updateStyle();
     }
 
-    setValue(field, value, elSelector, isShown) {
-        super.setValue(field, value, elSelector, isShown);
+    setValue(field, value) {
+        super.setValue(field, value);
         if (field === 'color') {
             this.updateStyle();
         }
     }
 
     /**
-     * Returns all data fields of this object. The fields are used when serializing the object.
+     * Returns all fields of this object that can be modified in the properties panel.
      * @returns {String[]}
      */
-    getFields() {
-        return ['id', 'containerId', 'x', 'y', 'width', 'height', 'color', 'printIf'];
+    getProperties() {
+        return ['x', 'y', 'width', 'height', 'color', 'printIf'];
     }
 
     getElementType() {
@@ -51,22 +51,6 @@ export default class LineElement extends DocElement {
         return ['E', 'W'];
     }
 
-    getXTagId() {
-        return 'rbro_line_element_position_x';
-    }
-
-    getYTagId() {
-        return 'rbro_line_element_position_y';
-    }
-
-    getWidthTagId() {
-        return 'rbro_line_element_width';
-    }
-
-    getHeightTagId() {
-        return 'rbro_line_element_height';
-    }
-
     createElement() {
         this.el = $(`<div id="rbro_el${this.id}" class="rbroDocElement rbroLineElement"></div>`);
         this.appendToContainer();
@@ -81,6 +65,16 @@ export default class LineElement extends DocElement {
      * @param {CommandGroupCmd} cmdGroup - possible SetValue commands will be added to this command group.
      */
     addCommandsForChangedParameterName(parameter, newParameterName, cmdGroup) {
-        this.addCommandForChangedParameterName(parameter, newParameterName, 'rbro_line_element_print_if', 'printIf', cmdGroup);
+        this.addCommandForChangedParameterName(parameter, newParameterName, 'printIf', cmdGroup);
+    }
+
+    /**
+     * Returns class name.
+     * This can be useful for introspection when the class names are mangled
+     * due to the webpack uglification process.
+     * @returns {string}
+     */
+    getClassName() {
+        return 'LineElement';
     }
 }
